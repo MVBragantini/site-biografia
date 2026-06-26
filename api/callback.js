@@ -10,11 +10,12 @@ export default async function handler(req, res) {
   const fail = (msg) => sendPostMessage(res, 'error', msg);
 
   if (!code) return fail('Sem code na resposta do GitHub.');
-  if (!expected || expected !== state) return fail('State inválido.');
+  if (!expected) return fail('Cookie oauth_state ausente (talvez bloqueado pelo navegador). Verifique cookies de terceiros.');
+  if (expected !== state) return fail(`State inválido. Esperado: ${expected.slice(0, 6)}... Recebido: ${String(state).slice(0, 6)}...`);
 
   const clientId = process.env.OAUTH_GITHUB_CLIENT_ID;
   const clientSecret = process.env.OAUTH_GITHUB_CLIENT_SECRET;
-  if (!clientId || !clientSecret) return fail('Vars de ambiente ausentes.');
+  if (!clientId || !clientSecret) return fail('Vars de ambiente OAUTH_GITHUB_* ausentes na Vercel.');
 
   try {
     const r = await fetch('https://github.com/login/oauth/access_token', {
@@ -48,21 +49,57 @@ function parseCookies(str) {
 }
 
 function sendPostMessage(res, status, payload) {
-  const message =
-    status === 'success'
-      ? `authorization:github:success:${JSON.stringify(payload)}`
-      : `authorization:github:error:${JSON.stringify({ message: payload })}`;
+  const isSuccess = status === 'success';
+  const message = isSuccess
+    ? `authorization:github:success:${JSON.stringify(payload)}`
+    : `authorization:github:error:${JSON.stringify({ message: payload })}`;
 
-  const html = `<!doctype html><html><body><script>
+  // HTML que:
+  // 1. Envia postMessage imediatamente (caso o opener já esteja escutando)
+  // 2. Re-envia quando receber "authorizing:github" do opener (padrão Decap)
+  // 3. Re-envia mais 3x a cada 200ms (defensivo)
+  // 4. Se sucesso, fecha em 800ms. Se erro, fica aberto e mostra mensagem.
+  const html = `<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8" /><title>Autorização</title>
+<style>
+  body { font-family: system-ui, -apple-system, sans-serif; padding: 2rem; background: #f5f3ee; color: #1c1c20; }
+  .ok { color: #4d8b3a; }
+  .fail { color: #c0392b; }
+  pre { background: #fff; padding: 1rem; border-radius: 6px; border: 1px solid #d9d6cc; white-space: pre-wrap; word-break: break-all; font-size: 12px; }
+  button { margin-top: 1rem; padding: .6rem 1rem; background: #1c1c20; color: #fff; border: 0; border-radius: 6px; cursor: pointer; }
+</style>
+</head><body>
+<h2 class="${isSuccess ? 'ok' : 'fail'}">${isSuccess ? 'Autorização concluída' : 'Autorização falhou'}</h2>
+${isSuccess ? '<p>Esta janela fecha em instantes…</p>' : `<p>Motivo:</p><pre>${escapeHtml(typeof payload === 'string' ? payload : JSON.stringify(payload))}</pre><button onclick="window.close()">Fechar</button>`}
+<script>
 (function(){
-  function send(){ window.opener && window.opener.postMessage(${JSON.stringify(message)}, '*'); }
-  window.addEventListener('message', function once(e){
-    if (e.data === 'authorizing:github') { send(); window.removeEventListener('message', once); }
+  var msg = ${JSON.stringify(message)};
+  var sent = 0;
+  function send(){
+    try {
+      if (window.opener) {
+        window.opener.postMessage(msg, '*');
+        sent++;
+      }
+    } catch(e) {}
+  }
+  // listener padrão do Decap CMS
+  window.addEventListener('message', function(e){
+    if (e.data === 'authorizing:github') send();
   }, false);
+  // envia agora
   send();
-  setTimeout(function(){ window.close(); }, 1500);
+  // re-envia 5 vezes em 1s para garantir
+  var t = 0;
+  var iv = setInterval(function(){
+    t++;
+    send();
+    if (t >= 5) clearInterval(iv);
+  }, 200);
+  ${isSuccess ? 'setTimeout(function(){ window.close(); }, 1200);' : ''}
 })();
-</script><p style="font-family:system-ui;padding:2rem">Autorização ${status === 'success' ? 'concluída' : 'falhou'}. Esta aba se fecha em instantes.</p></body></html>`;
+</script>
+</body></html>`;
 
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.setHeader(
@@ -70,4 +107,12 @@ function sendPostMessage(res, status, payload) {
     'oauth_state=; HttpOnly; Secure; SameSite=Lax; Path=/api; Max-Age=0',
   );
   res.status(200).send(html);
+}
+
+function escapeHtml(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 }
