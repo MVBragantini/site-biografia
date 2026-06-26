@@ -75,27 +75,46 @@ ${isSuccess ? '<p>Token recebido. Se a janela do admin não atualizar sozinha, a
 (function(){
   var msg = ${JSON.stringify(message)};
   var sent = 0;
+  var logs = [];
   var debugEl = document.getElementById('debug-info');
   function log(s){
     console.log('[OAuth callback]', s);
-    if (debugEl) debugEl.textContent = s;
+    logs.push(new Date().toISOString().slice(11, 19) + ' ' + s);
+    if (debugEl) debugEl.textContent = logs.join('\\n');
   }
   function send(){
     try {
       if (window.opener && !window.opener.closed) {
         window.opener.postMessage(msg, '*');
         sent++;
-        log('postMessage enviada ('+sent+'x) — opener: ' + window.opener.location.origin);
+        log('postMessage('+sent+') → opener ' + window.opener.location.origin);
       } else {
-        log('window.opener é null ou fechado — popup sem opener!');
+        log('window.opener é null/closed');
       }
+      // fallback via BroadcastChannel — funciona mesmo sem opener
+      try {
+        var bc = new BroadcastChannel('decap-oauth');
+        bc.postMessage(msg);
+        log('BroadcastChannel enviada');
+        bc.close();
+      } catch(e) { log('BroadcastChannel n/a: ' + e.message); }
+      // fallback via localStorage event — outras tabs escutam 'storage'
+      try {
+        localStorage.setItem('decap-oauth-msg', msg);
+        localStorage.removeItem('decap-oauth-msg');
+        log('localStorage signal disparado');
+      } catch(e) { log('localStorage error: ' + e.message); }
     } catch(e) {
-      log('Erro ao postar: ' + e.message);
+      log('erro postMessage: ' + e.message);
     }
   }
   window.addEventListener('message', function(e){
-    log('recebeu mensagem: ' + JSON.stringify({origin: e.origin, data: e.data}).slice(0, 200));
-    if (e.data === 'authorizing:github') send();
+    if (typeof e.data === 'string' && e.data.indexOf('authorizing:github') === 0) {
+      log('opener pediu re-envio: ' + e.data);
+      send();
+    } else if (e.origin === window.location.origin && typeof e.data !== 'object') {
+      log('msg do opener: ' + String(e.data).slice(0, 80));
+    }
   }, false);
   send();
   var t = 0;
