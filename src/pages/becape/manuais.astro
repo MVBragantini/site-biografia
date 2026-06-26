@@ -1,0 +1,278 @@
+---
+import { getCollection } from 'astro:content';
+import Base from '../../layouts/Base.astro';
+import { site } from '../../data/site';
+
+const manuais = (await getCollection('manuais')).sort((a, b) =>
+  a.data.nome.localeCompare(b.data.nome),
+);
+const categorias = [...new Set(manuais.map((m) => m.data.categoria))].sort();
+const fabricantes = [
+  ...new Set(manuais.map((m) => m.data.fabricante).filter(Boolean) as string[]),
+].sort();
+---
+
+<Base title={`Manuais — BECAPE — ${site.name}`}>
+  <section class="section">
+    <div class="container">
+      <nav class="crumb"><a href="/becape">/becape</a><span>/</span><span>manuais</span></nav>
+
+      <header class="head">
+        <div>
+          <span class="eyebrow">manuais</span>
+          <h1>Manuais técnicos</h1>
+          <p class="lead">{manuais.length} manuais no momento. Clique no card para abrir o PDF.</p>
+        </div>
+
+        <div class="filters">
+          <label class="search">
+            <span class="sr-only">Buscar</span>
+            <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="7" />
+              <path d="m20 20-3-3" stroke-linecap="round" />
+            </svg>
+            <input
+              type="search"
+              id="q"
+              placeholder="Buscar por nome, fabricante…"
+              autocomplete="off"
+            />
+          </label>
+
+          <select id="categoria" aria-label="Filtrar por categoria">
+            <option value="">Todas categorias</option>
+            {categorias.map((c) => <option value={c}>{c}</option>)}
+          </select>
+
+          {fabricantes.length > 0 && (
+            <select id="fabricante" aria-label="Filtrar por fabricante">
+              <option value="">Todos fabricantes</option>
+              {fabricantes.map((f) => <option value={f}>{f}</option>)}
+            </select>
+          )}
+        </div>
+      </header>
+
+      <ul class="grid" id="manuais-grid">
+        {manuais.map((m) => (
+          <li
+            class="item"
+            data-nome={m.data.nome.toLowerCase()}
+            data-fab={(m.data.fabricante ?? '').toLowerCase()}
+            data-cat={m.data.categoria}
+            data-fabricante={m.data.fabricante ?? ''}
+          >
+            <a href={m.data.pdf} target="_blank" rel="noopener" class="manual">
+              <div class="manual-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+                  <path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" />
+                  <path d="M14 3v6h6" />
+                  <path d="M8 13h8M8 17h6" stroke-linecap="round" />
+                </svg>
+                <span class="pdf-tag">PDF</span>
+              </div>
+              <div class="manual-body">
+                <span class="manual-cat">{m.data.categoria}</span>
+                <h3>{m.data.nome}</h3>
+                {m.data.fabricante && <p class="manual-fab">{m.data.fabricante}</p>}
+                {m.data.observacao && <p class="manual-obs">{m.data.observacao}</p>}
+                <div class="manual-foot">
+                  {m.data.revisao && <span>{m.data.revisao}</span>}
+                  <span class="open">abrir →</span>
+                </div>
+              </div>
+            </a>
+          </li>
+        ))}
+      </ul>
+
+      <p class="empty" id="empty" hidden>Nenhum manual com esses filtros.</p>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .crumb {
+    display: flex;
+    gap: 0.5rem;
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    color: var(--ink-soft);
+    margin-bottom: var(--space-5);
+  }
+  .crumb a { color: var(--accent); }
+  .crumb span:last-child { color: var(--ink); }
+
+  .head {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: var(--space-5);
+    align-items: end;
+    margin-bottom: var(--space-7);
+  }
+  .head h1 {
+    font-size: var(--step-5);
+    margin-block: var(--space-3) var(--space-3);
+  }
+
+  .filters {
+    display: flex;
+    gap: var(--space-3);
+    flex-wrap: wrap;
+  }
+  .search {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+  }
+  .search svg {
+    position: absolute;
+    left: 0.85rem;
+    width: 1.1rem; height: 1.1rem;
+    color: var(--ink-soft);
+    pointer-events: none;
+  }
+  .search input {
+    padding: 0.6rem 0.9rem 0.6rem 2.4rem;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    border-radius: var(--radius);
+    min-width: 16rem;
+    font-size: var(--step--1);
+  }
+  .search input:focus {
+    border-color: var(--accent);
+    outline: none;
+  }
+  select {
+    padding: 0.6rem 0.9rem;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    border-radius: var(--radius);
+    font-size: var(--step--1);
+    cursor: pointer;
+  }
+  select:focus { border-color: var(--accent); outline: none; }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(20rem, 1fr));
+    gap: var(--space-4);
+  }
+  .item.hidden { display: none; }
+
+  .manual {
+    display: grid;
+    grid-template-columns: 6rem 1fr;
+    gap: var(--space-4);
+    padding: var(--space-4);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    color: var(--ink);
+    transition: transform var(--dur) var(--ease),
+                box-shadow var(--dur) var(--ease),
+                border-color var(--dur) var(--ease);
+    height: 100%;
+  }
+  .manual:hover {
+    transform: translateY(-2px);
+    border-color: var(--accent);
+    box-shadow: var(--shadow-md);
+  }
+  .manual-icon {
+    background: var(--ink);
+    color: var(--accent);
+    border-radius: var(--radius);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    padding: var(--space-3);
+  }
+  .manual-icon svg { width: 1.8rem; height: 1.8rem; }
+  .pdf-tag {
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    letter-spacing: 0.1em;
+    color: var(--surface);
+  }
+  .manual-body { display: flex; flex-direction: column; gap: 0.35rem; }
+  .manual-cat {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--accent);
+  }
+  .manual h3 {
+    font-size: var(--step-1);
+    line-height: 1.2;
+  }
+  .manual-fab {
+    font-size: 0.85rem;
+    color: var(--ink-soft);
+  }
+  .manual-obs {
+    font-size: 0.85rem;
+    color: var(--ink-2);
+    margin-top: 0.2rem;
+  }
+  .manual-foot {
+    margin-top: auto;
+    padding-top: var(--space-3);
+    display: flex;
+    justify-content: space-between;
+    align-items: end;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: var(--ink-soft);
+  }
+  .open { color: var(--accent); font-weight: 500; }
+
+  .empty {
+    padding: var(--space-7);
+    text-align: center;
+    color: var(--ink-soft);
+    background: var(--surface);
+    border: 1px dashed var(--border);
+    border-radius: var(--radius-lg);
+  }
+
+  @media (max-width: 720px) {
+    .head { grid-template-columns: 1fr; }
+    .search input { min-width: 0; width: 100%; }
+    .search { width: 100%; }
+  }
+</style>
+
+<script>
+  const q = document.querySelector<HTMLInputElement>('#q');
+  const cat = document.querySelector<HTMLSelectElement>('#categoria');
+  const fab = document.querySelector<HTMLSelectElement>('#fabricante');
+  const items = Array.from(document.querySelectorAll<HTMLElement>('.item'));
+  const empty = document.querySelector<HTMLElement>('#empty');
+
+  function apply() {
+    const term = q?.value.trim().toLowerCase() ?? '';
+    const catVal = cat?.value ?? '';
+    const fabVal = fab?.value ?? '';
+    let shown = 0;
+    items.forEach((el) => {
+      const matchTerm =
+        !term ||
+        (el.dataset.nome?.includes(term) ?? false) ||
+        (el.dataset.fab?.includes(term) ?? false);
+      const matchCat = !catVal || el.dataset.cat === catVal;
+      const matchFab = !fabVal || el.dataset.fabricante === fabVal;
+      const visible = matchTerm && matchCat && matchFab;
+      el.classList.toggle('hidden', !visible);
+      if (visible) shown++;
+    });
+    if (empty) empty.hidden = shown !== 0;
+  }
+  q?.addEventListener('input', apply);
+  cat?.addEventListener('change', apply);
+  fab?.addEventListener('change', apply);
+</script>

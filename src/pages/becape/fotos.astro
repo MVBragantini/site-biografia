@@ -1,0 +1,301 @@
+---
+import { getCollection } from 'astro:content';
+import Base from '../../layouts/Base.astro';
+import { site } from '../../data/site';
+
+const fotos = (await getCollection('fotos')).sort((a, b) => {
+  const da = a.data.data?.getTime() ?? 0;
+  const db = b.data.data?.getTime() ?? 0;
+  return db - da;
+});
+const categorias = [...new Set(fotos.map((f) => f.data.categoria))].sort();
+---
+
+<Base title={`Fotos — BECAPE — ${site.name}`}>
+  <section class="section">
+    <div class="container">
+      <nav class="crumb"><a href="/becape">/becape</a><span>/</span><span>fotos</span></nav>
+
+      <header class="head">
+        <div>
+          <span class="eyebrow">álbum</span>
+          <h1>Álbum de campo</h1>
+          <p class="lead">{fotos.length} registros. Clique para ver em tela cheia.</p>
+        </div>
+
+        <div class="filters">
+          <button class="chip active" data-cat="" type="button">Todas</button>
+          {categorias.map((c) => (
+            <button class="chip" data-cat={c} type="button">{c}</button>
+          ))}
+        </div>
+      </header>
+
+      <ul class="gallery" id="gallery">
+        {fotos.map((f, i) => (
+          <li
+            class="ph"
+            data-cat={f.data.categoria}
+            data-index={i}
+          >
+            <button
+              type="button"
+              class="ph-btn"
+              data-src={f.data.imagem}
+              data-titulo={f.data.titulo}
+              data-descricao={f.data.descricao ?? ''}
+              data-local={f.data.local ?? ''}
+              data-data={f.data.data ? f.data.data.toLocaleDateString('pt-BR') : ''}
+            >
+              <img src={f.data.imagem} alt={f.data.titulo} loading="lazy" decoding="async" />
+              <div class="ph-overlay">
+                <span class="ph-cat">{f.data.categoria}</span>
+                <h3>{f.data.titulo}</h3>
+                {f.data.local && <span class="ph-meta">{f.data.local}</span>}
+              </div>
+            </button>
+          </li>
+        ))}
+      </ul>
+
+      <p class="empty" id="empty" hidden>Nenhuma foto nessa categoria.</p>
+    </div>
+  </section>
+
+  <!-- lightbox -->
+  <dialog id="lightbox" class="lightbox" aria-label="Foto ampliada">
+    <button class="lb-close" type="button" aria-label="Fechar">×</button>
+    <figure>
+      <img id="lb-img" src="" alt="" />
+      <figcaption>
+        <h3 id="lb-titulo"></h3>
+        <p id="lb-descricao"></p>
+        <p class="lb-meta">
+          <span id="lb-local"></span>
+          <span id="lb-data"></span>
+        </p>
+      </figcaption>
+    </figure>
+  </dialog>
+</Base>
+
+<style>
+  .crumb {
+    display: flex;
+    gap: 0.5rem;
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    color: var(--ink-soft);
+    margin-bottom: var(--space-5);
+  }
+  .crumb a { color: var(--accent); }
+  .crumb span:last-child { color: var(--ink); }
+
+  .head {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: var(--space-5);
+    align-items: end;
+    margin-bottom: var(--space-6);
+  }
+  .head h1 {
+    font-size: var(--step-5);
+    margin-block: var(--space-3) var(--space-3);
+  }
+  .filters {
+    display: flex;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+  }
+  .chip {
+    padding: 0.4rem 0.9rem;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--ink-2);
+    font-size: 0.78rem;
+    font-family: var(--font-mono);
+    cursor: pointer;
+    transition: all var(--dur) var(--ease);
+  }
+  .chip:hover { border-color: var(--ink-2); }
+  .chip.active {
+    background: var(--ink);
+    color: var(--surface);
+    border-color: var(--ink);
+  }
+
+  .gallery {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+    gap: var(--space-3);
+  }
+  .ph.hidden { display: none; }
+  .ph-btn {
+    position: relative;
+    display: block;
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    overflow: hidden;
+    border-radius: var(--radius-lg);
+    cursor: zoom-in;
+    background: var(--surface);
+    border: 1px solid var(--border);
+  }
+  .ph-btn img {
+    width: 100%; height: 100%;
+    object-fit: cover;
+    transition: transform var(--dur-slow) var(--ease);
+  }
+  .ph-btn:hover img { transform: scale(1.05); }
+  .ph-overlay {
+    position: absolute;
+    inset: auto 0 0 0;
+    padding: var(--space-3);
+    background: linear-gradient(180deg, transparent, rgba(28, 28, 32, 0.85) 70%);
+    color: var(--surface);
+    text-align: left;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+  }
+  .ph-cat {
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--accent);
+  }
+  .ph-overlay h3 {
+    color: var(--surface);
+    font-size: 0.95rem;
+    line-height: 1.2;
+  }
+  .ph-meta {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    color: color-mix(in oklab, var(--surface) 70%, transparent);
+  }
+
+  .empty {
+    padding: var(--space-7);
+    text-align: center;
+    color: var(--ink-soft);
+    background: var(--surface);
+    border: 1px dashed var(--border);
+    border-radius: var(--radius-lg);
+  }
+
+  /* lightbox */
+  .lightbox {
+    border: 0;
+    background: rgba(28, 28, 32, 0.95);
+    color: var(--surface);
+    width: min(94vw, 1100px);
+    max-height: 92vh;
+    padding: 0;
+    border-radius: var(--radius-lg);
+  }
+  .lightbox::backdrop {
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(4px);
+  }
+  .lightbox figure {
+    display: grid;
+    grid-template-rows: 1fr auto;
+    height: 100%;
+  }
+  .lightbox img {
+    width: 100%;
+    max-height: 75vh;
+    object-fit: contain;
+    background: #000;
+  }
+  .lightbox figcaption {
+    padding: var(--space-5);
+    border-top: 1px solid color-mix(in oklab, var(--surface) 15%, transparent);
+  }
+  .lightbox h3 {
+    color: var(--surface);
+    font-size: var(--step-2);
+    margin-bottom: var(--space-2);
+  }
+  .lightbox p { color: color-mix(in oklab, var(--surface) 75%, transparent); }
+  .lb-meta {
+    display: flex;
+    gap: var(--space-4);
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    color: var(--accent);
+    margin-top: var(--space-3);
+  }
+  .lb-close {
+    position: absolute;
+    top: 0.7rem; right: 0.85rem;
+    width: 2.4rem; height: 2.4rem;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.15);
+    color: var(--surface);
+    font-size: 1.4rem;
+    line-height: 1;
+    transition: background var(--dur) var(--ease);
+    z-index: 2;
+  }
+  .lb-close:hover { background: var(--accent); }
+
+  @media (max-width: 720px) {
+    .head { grid-template-columns: 1fr; }
+  }
+</style>
+
+<script>
+  // filtros por categoria
+  const chips = Array.from(document.querySelectorAll<HTMLButtonElement>('.chip'));
+  const items = Array.from(document.querySelectorAll<HTMLElement>('.ph'));
+  const emptyEl = document.querySelector<HTMLElement>('#empty');
+  chips.forEach((c) =>
+    c.addEventListener('click', () => {
+      chips.forEach((x) => x.classList.toggle('active', x === c));
+      const cat = c.dataset.cat ?? '';
+      let shown = 0;
+      items.forEach((it) => {
+        const visible = !cat || it.dataset.cat === cat;
+        it.classList.toggle('hidden', !visible);
+        if (visible) shown++;
+      });
+      if (emptyEl) emptyEl.hidden = shown !== 0;
+    }),
+  );
+
+  // lightbox
+  const dlg = document.querySelector<HTMLDialogElement>('#lightbox');
+  const lbImg = document.querySelector<HTMLImageElement>('#lb-img');
+  const lbTit = document.querySelector<HTMLElement>('#lb-titulo');
+  const lbDesc = document.querySelector<HTMLElement>('#lb-descricao');
+  const lbLocal = document.querySelector<HTMLElement>('#lb-local');
+  const lbData = document.querySelector<HTMLElement>('#lb-data');
+  const closeBtn = document.querySelector<HTMLButtonElement>('.lb-close');
+
+  document.querySelectorAll<HTMLButtonElement>('.ph-btn').forEach((b) =>
+    b.addEventListener('click', () => {
+      if (!dlg || !lbImg || !lbTit || !lbDesc || !lbLocal || !lbData) return;
+      lbImg.src = b.dataset.src ?? '';
+      lbImg.alt = b.dataset.titulo ?? '';
+      lbTit.textContent = b.dataset.titulo ?? '';
+      lbDesc.textContent = b.dataset.descricao ?? '';
+      lbLocal.textContent = b.dataset.local ?? '';
+      lbData.textContent = b.dataset.data ?? '';
+      dlg.showModal();
+    }),
+  );
+  closeBtn?.addEventListener('click', () => dlg?.close());
+  dlg?.addEventListener('click', (e) => {
+    const rect = (e.currentTarget as HTMLDialogElement).getBoundingClientRect();
+    const inside =
+      e.clientX >= rect.left &&
+      e.clientX <= rect.right &&
+      e.clientY >= rect.top &&
+      e.clientY <= rect.bottom;
+    if (!inside) dlg?.close();
+  });
+</script>

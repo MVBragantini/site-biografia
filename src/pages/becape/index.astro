@@ -1,0 +1,133 @@
+---
+import { getCollection } from 'astro:content';
+import Base from '../../layouts/Base.astro';
+import { site } from '../../data/site';
+
+const manuais = await getCollection('manuais');
+const fotos = await getCollection('fotos');
+const categoriasManuais = [...new Set(manuais.map((m) => m.data.categoria))];
+const categoriasFotos = [...new Set(fotos.map((f) => f.data.categoria))];
+---
+
+<Base title={`BECAPE — ${site.name}`}>
+  <section class="section">
+    <div class="container">
+      <header class="header">
+        <span class="eyebrow">/becape</span>
+        <h1>Becape de campo.</h1>
+        <p class="lead">
+          Acesso rápido aos manuais que consulto na bancada e ao registro
+          fotográfico dos projetos. Atualizo por aqui — em breve, direto pelo painel.
+        </p>
+      </header>
+
+      <div class="cards">
+        <a href="/becape/manuais" class="card card-manuais">
+          <div class="card-head">
+            <span class="card-tag">manuais</span>
+            <span class="card-count">{manuais.length}</span>
+          </div>
+          <h2>Manuais técnicos</h2>
+          <p>Inversores, IHMs, PLCs e o que mais aparecer na bancada.</p>
+          <ul class="chips">
+            {categoriasManuais.map((c) => <li>{c}</li>)}
+          </ul>
+          <span class="card-cta">Abrir manuais <span aria-hidden="true">→</span></span>
+        </a>
+
+        <a href="/becape/fotos" class="card card-fotos">
+          <div class="card-head">
+            <span class="card-tag">fotos</span>
+            <span class="card-count">{fotos.length}</span>
+          </div>
+          <h2>Álbum de campo</h2>
+          <p>Registro fotográfico de painéis, manutenções e projetos.</p>
+          <ul class="chips">
+            {categoriasFotos.map((c) => <li>{c}</li>)}
+          </ul>
+          <span class="card-cta">Abrir álbum <span aria-hidden="true">→</span></span>
+        </a>
+      </div>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .header {
+    max-width: 38rem;
+    margin-bottom: var(--space-7);
+  }
+  .header h1 {
+    font-size: var(--step-5);
+    margin-block: var(--space-3) var(--space-4);
+  }
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));
+    gap: var(--space-5);
+  }
+  .card {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    padding: var(--space-6);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    transition: transform var(--dur) var(--ease),
+                box-shadow var(--dur) var(--ease),
+                border-color var(--dur) var(--ease);
+    color: var(--ink);
+  }
+  .card:hover {
+    transform: translateY(-3px);
+    border-color: var(--ink-2);
+    box-shadow: var(--shadow-lg);
+  }
+  .card-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: var(--space-3);
+    border-bottom: 1px dashed var(--border);
+  }
+  .card-tag {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--accent);
+  }
+  .card-count {
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    padding: 0.2rem 0.6rem;
+    border-radius: 999px;
+    background: var(--surface-2);
+    color: var(--ink-2);
+  }
+  .card h2 { font-size: var(--step-3); }
+  .card p { color: var(--ink-2); }
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-block: var(--space-2) var(--space-4);
+  }
+  .chips li {
+    padding: 0.25rem 0.6rem;
+    background: var(--accent-soft);
+    color: var(--accent-hover);
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-family: var(--font-mono);
+  }
+  .card-cta {
+    margin-top: auto;
+    font-weight: 500;
+    color: var(--ink);
+    display: inline-flex;
+    gap: var(--space-2);
+  }
+  .card:hover .card-cta { color: var(--accent); }
+</style>

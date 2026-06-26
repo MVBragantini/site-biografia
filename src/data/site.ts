@@ -1,8 +1,8 @@
 export const site = {
   name: 'Marcus Bragantini',
-  role: 'Automação industrial · Engenharia · Desenvolvimento',
+  role: 'Automação industrial · CAD · Desenvolvimento web',
   shortBio:
-    'Trabalho na intersecção entre o chão de fábrica e o código — automação industrial, CAD 3D, IHM/PLC e desenvolvimento web.',
+    'Atuo entre o chão de fábrica e o código — automação industrial, CAD 3D, IHM/PLC e desenvolvimento web.',
   location: 'Rio de Janeiro, Brasil',
   email: 'bragantini34@gmail.com',
   phone: '+55 21 98017-7454',
