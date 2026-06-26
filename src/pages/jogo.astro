@@ -57,18 +57,16 @@ import { site } from '../data/site';
           </div>
         </div>
 
-        <div class="board-wrapper">
-          <table class="board" aria-label="Tabuleiro">
-            <tr>
-              {[0, 1, 2].map((i) => <td class="cell" data-i={i} aria-label="Casa vazia"></td>)}
-            </tr>
-            <tr>
-              {[3, 4, 5].map((i) => <td class="cell" data-i={i} aria-label="Casa vazia"></td>)}
-            </tr>
-            <tr>
-              {[6, 7, 8].map((i) => <td class="cell" data-i={i} aria-label="Casa vazia"></td>)}
-            </tr>
-          </table>
+        <div class="board" role="grid" aria-label="Tabuleiro">
+          {Array.from({ length: 9 }, (_, i) => (
+            <button
+              type="button"
+              class="cell"
+              data-i={i}
+              role="gridcell"
+              aria-label="Casa vazia"
+            ></button>
+          ))}
         </div>
 
         <button class="restart-button" type="button">Nova partida</button>
@@ -219,38 +217,35 @@ import { site } from '../data/site';
   .score-o .score-label, .score-o .score-value { color: var(--player-o); }
 
   /* ===== board ===== */
-  .board-wrapper {
+  .board {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(3, 1fr);
+    gap: 0.55rem;
     aspect-ratio: 1;
     width: 100%;
     max-width: 26rem;
     margin-inline: auto;
-  }
-  .board {
-    width: 100%;
-    height: 100%;
-    border-collapse: separate;
-    border-spacing: 0.5rem;
-    background: transparent;
     --current-player: "X";
     --preview-color: var(--player-x);
   }
   .cell {
-    width: calc(100% / 3);
+    position: relative;
     aspect-ratio: 1;
+    width: 100%;
     background: var(--surface-2);
     border: 1px solid var(--border);
     border-radius: 14px;
     font-family: var(--font-display);
     font-weight: 800;
-    font-size: clamp(2.5rem, 11vw, 4.5rem);
-    text-align: center;
-    vertical-align: middle;
+    font-size: clamp(2.2rem, 9vw, 4rem);
+    color: var(--ink);
+    display: grid;
+    place-items: center;
     cursor: pointer;
     user-select: none;
     transition: background var(--dur) var(--ease),
-                border-color var(--dur) var(--ease),
-                transform var(--dur) var(--ease);
-    position: relative;
+                border-color var(--dur) var(--ease);
   }
   .cell:empty:hover,
   .cell.press-preview {
@@ -259,10 +254,6 @@ import { site } from '../data/site';
   }
   .cell:empty:hover::before {
     content: var(--current-player);
-    position: absolute;
-    inset: 0;
-    display: grid;
-    place-items: center;
     color: var(--preview-color);
     opacity: 0.18;
     pointer-events: none;
@@ -271,8 +262,8 @@ import { site } from '../data/site';
   .cell.player-x { color: var(--player-x); }
   .cell.player-o { color: var(--player-o); }
   .cell.player-x, .cell.player-o {
-    animation: place 0.28s var(--ease);
     cursor: default;
+    animation: place 0.28s var(--ease);
   }
   .cell.winner {
     background: var(--accent-soft);
@@ -345,7 +336,7 @@ import { site } from '../data/site';
   type Player = 'X' | 'O';
   type Mode = 'pvp' | 'cpu';
 
-  const board = document.querySelector<HTMLTableElement>('.board')!;
+  const board = document.querySelector<HTMLElement>('.board')!;
   const statusEl = document.getElementById('status')!;
   const dialog = document.querySelector<HTMLDialogElement>('.game-over-dialog')!;
   const dialogMessage = document.getElementById('game-over-message')!;
@@ -413,7 +404,7 @@ import { site } from '../data/site';
   }
   function handleTouchPreview(e: TouchEvent) {
     const target = e.target as HTMLElement | null;
-    const cell = target?.closest<HTMLTableCellElement>('.cell');
+    const cell = target?.closest<HTMLButtonElement>('.cell');
     if (cell && !isGameOver && cell.textContent === '') {
       clearTouchPreview();
       cell.classList.add('press-preview');
@@ -435,7 +426,7 @@ import { site } from '../data/site';
     board.style.setProperty('--current-player', '"X"');
     board.style.setProperty('--preview-color', 'var(--player-x)');
     if (dialog.open) dialog.close();
-    board.querySelectorAll<HTMLTableCellElement>('.cell').forEach((c) => {
+    board.querySelectorAll<HTMLButtonElement>('.cell').forEach((c) => {
       c.textContent = '';
       c.className = 'cell';
       c.setAttribute('aria-label', 'Casa vazia');
@@ -444,11 +435,11 @@ import { site } from '../data/site';
   }
 
   function cellsArray(): string[] {
-    return Array.from(board.querySelectorAll<HTMLTableCellElement>('.cell'), (c) => c.textContent || '');
+    return Array.from(board.querySelectorAll<HTMLButtonElement>('.cell'), (c) => c.textContent || '');
   }
 
   function setCell(index: number, player: Player) {
-    const cell = board.querySelectorAll<HTMLTableCellElement>('.cell')[index];
+    const cell = board.querySelectorAll<HTMLButtonElement>('.cell')[index];
     if (!cell || cell.textContent !== '') return;
     cell.textContent = player;
     cell.classList.add(player === 'X' ? 'player-x' : 'player-o');
@@ -479,7 +470,7 @@ import { site } from '../data/site';
 
   function onCellClick(e: MouseEvent) {
     const target = e.target as HTMLElement | null;
-    const cell = target?.closest<HTMLTableCellElement>('.cell');
+    const cell = target?.closest<HTMLButtonElement>('.cell');
     if (!cell || isGameOver || cell.textContent !== '' || cpuThinking) return;
     if (mode === 'cpu' && currentPlayer === 'O') return;
     clearTouchPreview();
@@ -503,7 +494,7 @@ import { site } from '../data/site';
     isGameOver = true;
     board.classList.add('game-over');
     if (winner && line) {
-      const all = board.querySelectorAll<HTMLTableCellElement>('.cell');
+      const all = board.querySelectorAll<HTMLButtonElement>('.cell');
       line.forEach((i) => all[i].classList.add('winner'));
       scores[winner]++;
       bumpScore(winner);
