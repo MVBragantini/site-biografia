@@ -1,9 +1,9 @@
 ---
-nome: 'IHM Weintek MT8071iE'
-fabricante: 'Weintek'
-categoria: 'IHM'
-pdf: '/becape/manuais/ihm-weintek-mt8071.pdf'
-revisao: '2024'
-observacao: 'IHM 7" usada em vários projetos de automação.'
+nome: Inversor CFW700
+fabricante: "WEG "
+categoria: Inversor de frequência
+pdf: https://static.weg.net/medias/downloadcenter/h86/hf9/WEG-10000796176-CFW700-manual-programacao-pt.pdf
+revisao: Versão 2.3x - 08/2020
+observacao: ""
 adicionadoEm: 2026-06-25
 ---
