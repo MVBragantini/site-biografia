@@ -12,6 +12,7 @@ export const site = {
   whatsappHref: `https://wa.me/${contato.phoneDigits}`,
   github: contato.github,
   hero: contato.hero || '/img/marcus.jpg',
+  logo: contato.logo || '',
   url: 'https://bragantini.com.br',
   nav: [
     { label: 'Início', href: '/' },

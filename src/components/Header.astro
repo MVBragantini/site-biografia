@@ -7,20 +7,14 @@ const path = Astro.url.pathname.replace(/\/$/, '') || '/';
   <div class="container header-inner">
     <a href="/" class="brand" aria-label="Início">
       <span class="brand-mark" aria-hidden="true">
-        <svg viewBox="0 0 68 36" xmlns="http://www.w3.org/2000/svg" fill="none">
-          <!-- M -->
-          <path
-            d="M2 33 L2 3 L8 3 L17 18 L26 3 L32 3 L32 33 L27 33 L27 12 L19 25 L15 25 L7 12 L7 33 Z"
-            fill="currentColor"
-          />
-          <!-- diagonal de acento entre M e B -->
-          <path d="M36 33 L42 3 L45 3 L39 33 Z" fill="var(--accent)" />
-          <!-- B -->
-          <path
-            d="M44 3 L57 3 C61 3 64 6 64 10 C64 13 62 15 60 16.5 C63 18 65 20.5 65 24 C65 28.5 61.5 33 56 33 L44 33 Z M49 8 L49 15 L56 15 C58 15 59.5 13.5 59.5 11.5 C59.5 9.5 58 8 56 8 Z M49 20 L49 28 L55.5 28 C58 28 60 26 60 24 C60 22 58 20 55.5 20 Z"
-            fill="currentColor"
-          />
-        </svg>
+        {site.logo ? (
+          <img src={site.logo} alt="" />
+        ) : (
+          <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="2" y="2" width="28" height="28" rx="4" fill="var(--ink)" />
+            <text x="16" y="22" text-anchor="middle" font-family="Bricolage Grotesque, sans-serif" font-weight="800" font-size="18" fill="var(--accent)">B</text>
+          </svg>
+        )}
       </span>
       <span class="brand-text">
         <span class="brand-name">Bragantini</span>
@@ -80,12 +74,17 @@ const path = Astro.url.pathname.replace(/\/$/, '') || '/';
     color: var(--ink);
   }
   .brand-mark {
-    height: 2rem;
+    height: 2.25rem;
     color: var(--ink);
     display: flex;
     align-items: center;
   }
-  .brand-mark svg { height: 100%; width: auto; }
+  .brand-mark svg,
+  .brand-mark img {
+    height: 100%;
+    width: auto;
+    object-fit: contain;
+  }
   .brand-text { display: flex; flex-direction: column; line-height: 1.1; }
   .brand-name {
     font-family: var(--font-display);

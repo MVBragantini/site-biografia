@@ -120,4 +120,5 @@ collections:
           - { name: phone, label: 'Telefone', widget: string, hint: 'Formato visível, ex.: +55 21 98017-7454' }
           - { name: phoneDigits, label: 'Telefone só dígitos', widget: string, hint: 'Sem espaços/sinais. Ex.: 5521980177454' }
           - { name: github, label: 'URL do GitHub', widget: string }
-          - { name: hero, label: 'Foto do hero', widget: image, required: false, hint: 'Substitui a foto da página inicial.' }
+          - { name: hero, label: 'Foto do hero (página inicial)', widget: image, required: false }
+          - { name: logo, label: 'Logo do site (cabeçalho)', widget: image, required: false, hint: 'PNG/SVG com fundo transparente. Aparece no canto superior esquerdo de toda página.' }

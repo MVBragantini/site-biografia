@@ -1,6 +1,6 @@
 // Callback do OAuth. GitHub redireciona para cá com ?code=...&state=...
-// Trocamos o code por um access_token e, via handshake postMessage,
-// devolvemos para a janela do Decap CMS (aberta em /admin).
+// Trocamos o code por um access_token e devolvemos via handshake postMessage
+// para a janela do Decap CMS (aberta em /admin).
 //
 // Protocolo do Decap CMS (netlify-auth-js):
 //   1. popup → admin: "authorizing:github"
@@ -55,27 +55,23 @@ function sendPostMessage(res, status, payload) {
     ? `authorization:github:success:${JSON.stringify(payload)}`
     : `authorization:github:error:${JSON.stringify({ message: payload })}`;
 
-  // Implementa o protocolo handshake do Decap CMS:
-  // 1. Popup envia 'authorizing:github'
-  // 2. Admin responde 'authorizing:github'
-  // 3. Popup envia 'authorization:github:success:<json>' (a mensagem final)
   const html = `<!doctype html>
 <html lang="pt-BR"><head><meta charset="utf-8" /><title>Autorização</title>
 <style>
-  body { font-family: system-ui, -apple-system, sans-serif; padding: 2rem; background: #f5f3ee; color: #1c1c20; }
+  body { font-family: system-ui, -apple-system, sans-serif; padding: 2rem; background: #f5f3ee; color: #1c1c20; text-align: center; }
   .ok { color: #4d8b3a; }
   .fail { color: #c0392b; }
-  pre { background: #fff; padding: 1rem; border-radius: 6px; border: 1px solid #d9d6cc; white-space: pre-wrap; word-break: break-all; font-size: 12px; }
+  pre { background: #fff; padding: 1rem; border-radius: 6px; border: 1px solid #d9d6cc; white-space: pre-wrap; word-break: break-all; font-size: 12px; text-align: left; }
   button { margin-top: 1rem; padding: .6rem 1rem; background: #1c1c20; color: #fff; border: 0; border-radius: 6px; cursor: pointer; }
 </style>
 </head><body>
 <h2 class="${isSuccess ? 'ok' : 'fail'}">${isSuccess ? 'Autorização concluída' : 'Autorização falhou'}</h2>
-${isSuccess ? '<p>Esta janela fecha em instantes…</p>' : `<p>Motivo:</p><pre>${escapeHtml(typeof payload === 'string' ? payload : JSON.stringify(payload))}</pre><button onclick="window.close()">Fechar</button>`}
+${isSuccess ? '<p>Pode fechar esta janela.</p>' : `<p>Motivo:</p><pre>${escapeHtml(typeof payload === 'string' ? payload : JSON.stringify(payload))}</pre><button onclick="window.close()">Fechar</button>`}
 <script>
 (function(){
   var finalMsg = ${JSON.stringify(finalMessage)};
   var handshakeMsg = 'authorizing:github';
-  var handshakeDone = false;
+  var done = false;
   function post(msg){
     try {
       if (window.opener && !window.opener.closed) {
@@ -83,31 +79,30 @@ ${isSuccess ? '<p>Esta janela fecha em instantes…</p>' : `<p>Motivo:</p><pre>$
       }
     } catch(e) {}
   }
-  // 1) inicia handshake — repete a cada 200ms até o opener responder
-  function startHandshake(){
+  // 1) inicia handshake — repete até o opener responder
+  post(handshakeMsg);
+  var iv = setInterval(function(){
+    if (done) { clearInterval(iv); return; }
     post(handshakeMsg);
-    var iv = setInterval(function(){
-      if (handshakeDone) { clearInterval(iv); return; }
-      post(handshakeMsg);
-    }, 200);
-    // se o opener não responder em 5s, manda o final mesmo assim como fallback
-    setTimeout(function(){
-      if (!handshakeDone) {
-        clearInterval(iv);
-        post(finalMsg);
-        ${isSuccess ? "setTimeout(function(){ try { window.close(); } catch(e){} }, 800);" : ''}
-      }
-    }, 5000);
-  }
-  // 2) quando o opener responder 'authorizing:github', enviar a mensagem final
-  window.addEventListener('message', function(e){
-    if (e.data === handshakeMsg && !handshakeDone) {
-      handshakeDone = true;
+  }, 200);
+  // fallback 5s
+  setTimeout(function(){
+    if (!done) {
+      done = true;
+      clearInterval(iv);
       post(finalMsg);
-      ${isSuccess ? "setTimeout(function(){ try { window.close(); } catch(e){} }, 800);" : ''}
+      ${isSuccess ? "setTimeout(function(){ try { window.close(); } catch(e){} }, 600);" : ''}
+    }
+  }, 5000);
+  // 2) opener respondeu → envia mensagem final
+  window.addEventListener('message', function(e){
+    if (e.data === handshakeMsg && !done) {
+      done = true;
+      clearInterval(iv);
+      post(finalMsg);
+      ${isSuccess ? "setTimeout(function(){ try { window.close(); } catch(e){} }, 600);" : ''}
     }
   }, false);
-  startHandshake();
 })();
 </script>
 </body></html>`;
