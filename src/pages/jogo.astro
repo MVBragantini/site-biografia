@@ -3,27 +3,622 @@ import Base from '../layouts/Base.astro';
 import { site } from '../data/site';
 ---
 
-<Base title={`Jogo da Velha — ${site.name}`}>
+<Base
+  title={`Jogo da Velha — ${site.name}`}
+  description="Jogo da velha: 2 jogadores ou contra a CPU, com placar local. Projeto de Marcus Bragantini."
+>
   <section class="section">
-    <div class="container-narrow">
-      <span class="eyebrow">projeto</span>
-      <h1>Jogo da velha — em integração.</h1>
+    <div class="container-narrow head">
+      <span class="eyebrow">projeto · javascript</span>
+      <h1>Jogo da velha</h1>
       <p class="lead">
-        O jogo já existe e está hospedado separadamente. Na Fase 4 do redesign vou
-        polir o visual e trazê-lo para dentro deste site.
+        Partida rápida em duas pessoas ou contra a CPU. O placar fica salvo no
+        navegador — feche e abra a aba que ele continua.
       </p>
-      <a
-        href="https://bragantini.com.br/jogo/"
-        class="btn btn-primary"
-        target="_blank"
-        rel="noopener"
-      >
-        Abrir versão atual →
-      </a>
+    </div>
+
+    <div class="container app-wrap">
+      <div class="controls" role="group" aria-label="Modo de jogo">
+        <div class="mode" role="tablist">
+          <button class="mode-btn active" data-mode="pvp" role="tab" aria-selected="true" type="button">
+            2 jogadores
+          </button>
+          <button class="mode-btn" data-mode="cpu" role="tab" aria-selected="false" type="button">
+            Vs. CPU
+          </button>
+        </div>
+        <button class="reset-scores" type="button" title="Zerar placar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" stroke-linecap="round"/>
+          </svg>
+          <span>Zerar placar</span>
+        </button>
+      </div>
+
+      <div class="app">
+        <header class="app-header">
+          <p class="status" id="status" aria-live="polite">
+            Vez do <span class="player-tag player-x">X</span>
+          </p>
+        </header>
+
+        <div class="scoreboard" aria-label="Placar">
+          <div class="score-card score-x">
+            <span class="score-label">X</span>
+            <span class="score-value" id="score-x">0</span>
+          </div>
+          <div class="score-card score-draw">
+            <span class="score-label">Emp.</span>
+            <span class="score-value" id="score-draw">0</span>
+          </div>
+          <div class="score-card score-o">
+            <span class="score-label">O</span>
+            <span class="score-value" id="score-o">0</span>
+          </div>
+        </div>
+
+        <div class="board-wrapper">
+          <table class="board" aria-label="Tabuleiro">
+            <tr>
+              {[0, 1, 2].map((i) => <td class="cell" data-i={i} aria-label="Casa vazia"></td>)}
+            </tr>
+            <tr>
+              {[3, 4, 5].map((i) => <td class="cell" data-i={i} aria-label="Casa vazia"></td>)}
+            </tr>
+            <tr>
+              {[6, 7, 8].map((i) => <td class="cell" data-i={i} aria-label="Casa vazia"></td>)}
+            </tr>
+          </table>
+        </div>
+
+        <button class="restart-button" type="button">Nova partida</button>
+      </div>
+
+      <dialog class="game-over-dialog">
+        <div class="dialog-content">
+          <span id="dialog-icon" class="dialog-icon" aria-hidden="true">🏆</span>
+          <h2 id="game-over-message">X venceu!</h2>
+          <button class="restart-button" type="button">Jogar de novo</button>
+        </div>
+      </dialog>
     </div>
   </section>
 </Base>
 
 <style>
-  h1 { font-size: var(--step-5); margin-block: var(--space-3) var(--space-5); }
+  .head {
+    text-align: center;
+    margin-bottom: var(--space-7);
+  }
+  .head h1 {
+    font-size: var(--step-5);
+    margin-block: var(--space-3) var(--space-4);
+  }
+  .head .lead {
+    margin-inline: auto;
+  }
+
+  .app-wrap {
+    max-width: 38rem;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+  }
+
+  /* ===== controles ===== */
+  .controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--space-3);
+    flex-wrap: wrap;
+  }
+  .mode {
+    display: inline-flex;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 0.25rem;
+  }
+  .mode-btn {
+    padding: 0.45rem 1rem;
+    border-radius: 999px;
+    font-size: var(--step--1);
+    color: var(--ink-soft);
+    transition: all var(--dur) var(--ease);
+  }
+  .mode-btn.active {
+    background: var(--ink);
+    color: var(--surface);
+  }
+  .mode-btn:not(.active):hover { color: var(--ink); }
+  .reset-scores {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.5rem 0.9rem;
+    font-size: var(--step--1);
+    color: var(--ink-soft);
+    border-radius: var(--radius);
+    transition: color var(--dur) var(--ease), background var(--dur) var(--ease);
+  }
+  .reset-scores svg { width: 1rem; height: 1rem; }
+  .reset-scores:hover { color: var(--danger); background: var(--surface); }
+
+  /* ===== app ===== */
+  .app {
+    --player-x: var(--accent);
+    --player-o: #2a6fa0;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: clamp(var(--space-5), 4vw, var(--space-7));
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+    box-shadow: var(--shadow-md);
+  }
+  .app-header { text-align: center; }
+  .status {
+    font-family: var(--font-mono);
+    font-size: var(--step-0);
+    color: var(--ink-2);
+  }
+  .player-tag {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.6em;
+    height: 1.6em;
+    border-radius: 999px;
+    margin-inline: 0.15rem;
+    font-family: var(--font-display);
+    font-weight: 800;
+    color: var(--surface);
+  }
+  .player-tag.player-x { background: var(--player-x); }
+  .player-tag.player-o { background: var(--player-o); }
+
+  /* ===== scoreboard ===== */
+  .scoreboard {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: var(--space-3);
+  }
+  .score-card {
+    padding: var(--space-3);
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    text-align: center;
+    transition: transform var(--dur) var(--ease);
+  }
+  .score-card.score-bump { animation: bump 0.45s var(--ease); }
+  @keyframes bump {
+    0%, 100% { transform: scale(1); }
+    40% { transform: scale(1.08); }
+  }
+  .score-label {
+    display: block;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--ink-soft);
+  }
+  .score-value {
+    display: block;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: var(--step-3);
+    color: var(--ink);
+    line-height: 1;
+    margin-top: 0.2rem;
+  }
+  .score-x .score-label, .score-x .score-value { color: var(--player-x); }
+  .score-o .score-label, .score-o .score-value { color: var(--player-o); }
+
+  /* ===== board ===== */
+  .board-wrapper {
+    aspect-ratio: 1;
+    width: 100%;
+    max-width: 26rem;
+    margin-inline: auto;
+  }
+  .board {
+    width: 100%;
+    height: 100%;
+    border-collapse: separate;
+    border-spacing: 0.5rem;
+    background: transparent;
+    --current-player: "X";
+    --preview-color: var(--player-x);
+  }
+  .cell {
+    width: calc(100% / 3);
+    aspect-ratio: 1;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: clamp(2.5rem, 11vw, 4.5rem);
+    text-align: center;
+    vertical-align: middle;
+    cursor: pointer;
+    user-select: none;
+    transition: background var(--dur) var(--ease),
+                border-color var(--dur) var(--ease),
+                transform var(--dur) var(--ease);
+    position: relative;
+  }
+  .cell:empty:hover,
+  .cell.press-preview {
+    background: var(--surface);
+    border-color: var(--ink-2);
+  }
+  .cell:empty:hover::before {
+    content: var(--current-player);
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    color: var(--preview-color);
+    opacity: 0.18;
+    pointer-events: none;
+    animation: ghost 0.3s var(--ease);
+  }
+  .cell.player-x { color: var(--player-x); }
+  .cell.player-o { color: var(--player-o); }
+  .cell.player-x, .cell.player-o {
+    animation: place 0.28s var(--ease);
+    cursor: default;
+  }
+  .cell.winner {
+    background: var(--accent-soft);
+    border-color: var(--accent);
+    animation: winner 0.6s var(--ease);
+  }
+  .board.game-over .cell { cursor: default; }
+  .board.game-over .cell:empty:hover { background: var(--surface-2); border-color: var(--border); }
+  .board.game-over .cell:empty:hover::before { content: ''; }
+
+  @keyframes place {
+    0% { transform: scale(0.6); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+  @keyframes ghost {
+    0% { opacity: 0; }
+    100% { opacity: 0.18; }
+  }
+  @keyframes winner {
+    0%, 100% { transform: scale(1); }
+    40% { transform: scale(1.08); box-shadow: 0 0 0 6px color-mix(in oklab, var(--accent) 35%, transparent); }
+  }
+
+  .restart-button {
+    align-self: center;
+    padding: 0.75rem 1.5rem;
+    background: var(--ink);
+    color: var(--surface);
+    border-radius: var(--radius);
+    font-weight: 500;
+    transition: background var(--dur) var(--ease), transform var(--dur) var(--ease);
+  }
+  .restart-button:hover { background: var(--accent); transform: translateY(-1px); }
+
+  /* ===== dialog ===== */
+  .game-over-dialog {
+    border: 0;
+    background: var(--surface);
+    border-radius: var(--radius-lg);
+    padding: var(--space-7);
+    max-width: 24rem;
+    box-shadow: var(--shadow-lg);
+    text-align: center;
+  }
+  .game-over-dialog::backdrop {
+    background: rgba(28, 28, 32, 0.5);
+    backdrop-filter: blur(4px);
+  }
+  .game-over-dialog[open] { animation: dialog-in 0.3s var(--ease); }
+  @keyframes dialog-in {
+    from { opacity: 0; transform: scale(0.9); }
+    to { opacity: 1; transform: scale(1); }
+  }
+  .dialog-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-4);
+  }
+  .dialog-icon { font-size: 3rem; }
+  .game-over-dialog h2 {
+    font-size: var(--step-3);
+  }
 </style>
+
+<script>
+  // ============================================================
+  // Jogo da Velha — versão Astro com modo CPU
+  // ============================================================
+  type Player = 'X' | 'O';
+  type Mode = 'pvp' | 'cpu';
+
+  const board = document.querySelector<HTMLTableElement>('.board')!;
+  const statusEl = document.getElementById('status')!;
+  const dialog = document.querySelector<HTMLDialogElement>('.game-over-dialog')!;
+  const dialogMessage = document.getElementById('game-over-message')!;
+  const dialogIcon = document.getElementById('dialog-icon')!;
+  const restartButtons = document.querySelectorAll<HTMLButtonElement>('.restart-button');
+  const modeButtons = document.querySelectorAll<HTMLButtonElement>('.mode-btn');
+  const resetScoresBtn = document.querySelector<HTMLButtonElement>('.reset-scores')!;
+  const scoreEls = {
+    X: document.getElementById('score-x')!,
+    O: document.getElementById('score-o')!,
+    draw: document.getElementById('score-draw')!,
+  };
+
+  const SCORE_KEY = 'jogo-da-velha-scores-v2';
+  const MODE_KEY = 'jogo-da-velha-mode';
+
+  const winningConditions: ReadonlyArray<readonly [number, number, number]> = [
+    [0, 1, 2], [3, 4, 5], [6, 7, 8],
+    [0, 3, 6], [1, 4, 7], [2, 5, 8],
+    [0, 4, 8], [2, 4, 6],
+  ];
+
+  const prefersTouch = window.matchMedia('(hover: none), (pointer: coarse)').matches;
+
+  type Scores = { X: number; O: number; draw: number };
+  let currentPlayer: Player = 'X';
+  let isGameOver = false;
+  let turn = 0;
+  let mode: Mode = (localStorage.getItem(MODE_KEY) as Mode) || 'pvp';
+  let scores: Scores = loadScores();
+  let cpuThinking = false;
+
+  // ============================================================
+  // armazenamento
+  // ============================================================
+  function loadScores(): Scores {
+    try {
+      const saved = JSON.parse(localStorage.getItem(SCORE_KEY) || 'null');
+      if (saved && typeof saved === 'object')
+        return { X: 0, O: 0, draw: 0, ...saved };
+    } catch (_) {}
+    return { X: 0, O: 0, draw: 0 };
+  }
+  function saveScores() {
+    localStorage.setItem(SCORE_KEY, JSON.stringify(scores));
+  }
+  function renderScores() {
+    scoreEls.X.textContent = String(scores.X);
+    scoreEls.O.textContent = String(scores.O);
+    scoreEls.draw.textContent = String(scores.draw);
+  }
+  function bumpScore(key: keyof Scores) {
+    const map = { X: '.score-x', O: '.score-o', draw: '.score-draw' } as const;
+    const card = document.querySelector(map[key]);
+    card?.classList.remove('score-bump');
+    void (card as HTMLElement | null)?.offsetWidth;
+    card?.classList.add('score-bump');
+  }
+
+  // ============================================================
+  // touch / háptico
+  // ============================================================
+  function hapticTap() {
+    if (navigator.vibrate) navigator.vibrate(12);
+  }
+  function handleTouchPreview(e: TouchEvent) {
+    const target = e.target as HTMLElement | null;
+    const cell = target?.closest<HTMLTableCellElement>('.cell');
+    if (cell && !isGameOver && cell.textContent === '') {
+      clearTouchPreview();
+      cell.classList.add('press-preview');
+    }
+  }
+  function clearTouchPreview() {
+    board.querySelectorAll('.cell.press-preview').forEach((c) => c.classList.remove('press-preview'));
+  }
+
+  // ============================================================
+  // fluxo do jogo
+  // ============================================================
+  function startGame() {
+    currentPlayer = 'X';
+    isGameOver = false;
+    turn = 0;
+    cpuThinking = false;
+    board.classList.remove('game-over');
+    board.style.setProperty('--current-player', '"X"');
+    board.style.setProperty('--preview-color', 'var(--player-x)');
+    if (dialog.open) dialog.close();
+    board.querySelectorAll<HTMLTableCellElement>('.cell').forEach((c) => {
+      c.textContent = '';
+      c.className = 'cell';
+      c.setAttribute('aria-label', 'Casa vazia');
+    });
+    updateStatus();
+  }
+
+  function cellsArray(): string[] {
+    return Array.from(board.querySelectorAll<HTMLTableCellElement>('.cell'), (c) => c.textContent || '');
+  }
+
+  function setCell(index: number, player: Player) {
+    const cell = board.querySelectorAll<HTMLTableCellElement>('.cell')[index];
+    if (!cell || cell.textContent !== '') return;
+    cell.textContent = player;
+    cell.classList.add(player === 'X' ? 'player-x' : 'player-o');
+    cell.setAttribute('aria-label', `Jogador ${player}`);
+    turn++;
+    if (turn > 4) checkGameOver();
+    if (!isGameOver) togglePlayer();
+  }
+
+  function togglePlayer() {
+    currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
+    const preview = currentPlayer === 'X' ? 'var(--player-x)' : 'var(--player-o)';
+    board.style.setProperty('--current-player', `"${currentPlayer}"`);
+    board.style.setProperty('--preview-color', preview);
+    updateStatus();
+    if (mode === 'cpu' && currentPlayer === 'O' && !isGameOver) scheduleCpuMove();
+  }
+
+  function updateStatus() {
+    if (isGameOver) return;
+    if (mode === 'cpu' && currentPlayer === 'O') {
+      statusEl.innerHTML = 'A CPU pensando…';
+      return;
+    }
+    const cls = currentPlayer === 'X' ? 'player-x' : 'player-o';
+    statusEl.innerHTML = `Vez do <span class="player-tag ${cls}">${currentPlayer}</span>`;
+  }
+
+  function onCellClick(e: MouseEvent) {
+    const target = e.target as HTMLElement | null;
+    const cell = target?.closest<HTMLTableCellElement>('.cell');
+    if (!cell || isGameOver || cell.textContent !== '' || cpuThinking) return;
+    if (mode === 'cpu' && currentPlayer === 'O') return;
+    clearTouchPreview();
+    hapticTap();
+    const i = Number(cell.dataset.i);
+    setCell(i, currentPlayer);
+  }
+
+  function checkGameOver() {
+    const cells = cellsArray();
+    for (const [a, b, c] of winningConditions) {
+      if (cells[a] && cells[a] === cells[b] && cells[b] === cells[c]) {
+        finish(cells[a] as Player, [a, b, c]);
+        return;
+      }
+    }
+    if (turn > 8) finish(null, null);
+  }
+
+  function finish(winner: Player | null, line: number[] | null) {
+    isGameOver = true;
+    board.classList.add('game-over');
+    if (winner && line) {
+      const all = board.querySelectorAll<HTMLTableCellElement>('.cell');
+      line.forEach((i) => all[i].classList.add('winner'));
+      scores[winner]++;
+      bumpScore(winner);
+      saveScores();
+      renderScores();
+      statusEl.textContent = `${winner} venceu!`;
+      showDialog(`${winner} venceu!`, '🏆');
+    } else {
+      scores.draw++;
+      bumpScore('draw');
+      saveScores();
+      renderScores();
+      statusEl.textContent = 'Empate!';
+      showDialog('Deu velha!', '🤝');
+    }
+  }
+
+  function showDialog(message: string, icon: string) {
+    dialogMessage.textContent = message;
+    dialogIcon.textContent = icon;
+    const delay = prefersTouch ? 450 : 250;
+    setTimeout(() => {
+      if (isGameOver && !dialog.open) {
+        dialog.showModal();
+        if (prefersTouch) hapticTap();
+      }
+    }, delay);
+  }
+
+  // ============================================================
+  // CPU — heurística leve (não infalível, mas decente)
+  // ============================================================
+  function scheduleCpuMove() {
+    cpuThinking = true;
+    setTimeout(() => {
+      if (isGameOver) {
+        cpuThinking = false;
+        return;
+      }
+      const i = pickCpuMove();
+      cpuThinking = false;
+      if (i >= 0) setCell(i, 'O');
+    }, 450);
+  }
+
+  function pickCpuMove(): number {
+    const cells = cellsArray();
+    const empty = cells.map((v, i) => (v === '' ? i : -1)).filter((i) => i >= 0);
+
+    // 1. Vencer se puder
+    for (const i of empty) {
+      const test = [...cells]; test[i] = 'O';
+      if (checkWin(test, 'O')) return i;
+    }
+    // 2. Bloquear vitória do X
+    for (const i of empty) {
+      const test = [...cells]; test[i] = 'X';
+      if (checkWin(test, 'X')) return i;
+    }
+    // 3. Pegar centro
+    if (cells[4] === '') return 4;
+    // 4. Pegar uma quina
+    const corners = [0, 2, 6, 8].filter((i) => cells[i] === '');
+    if (corners.length) return corners[Math.floor(Math.random() * corners.length)];
+    // 5. Qualquer aresta
+    const edges = [1, 3, 5, 7].filter((i) => cells[i] === '');
+    if (edges.length) return edges[Math.floor(Math.random() * edges.length)];
+    return -1;
+  }
+
+  function checkWin(cells: string[], p: Player): boolean {
+    return winningConditions.some(([a, b, c]) => cells[a] === p && cells[b] === p && cells[c] === p);
+  }
+
+  // ============================================================
+  // modo
+  // ============================================================
+  function setMode(next: Mode) {
+    mode = next;
+    localStorage.setItem(MODE_KEY, mode);
+    modeButtons.forEach((b) => {
+      const active = b.dataset.mode === mode;
+      b.classList.toggle('active', active);
+      b.setAttribute('aria-selected', String(active));
+    });
+    startGame();
+  }
+
+  // ============================================================
+  // listeners
+  // ============================================================
+  board.addEventListener('click', onCellClick);
+  restartButtons.forEach((b) => b.addEventListener('click', startGame));
+  dialog.addEventListener('click', (e) => {
+    if (e.target === dialog) startGame();
+  });
+  modeButtons.forEach((b) =>
+    b.addEventListener('click', () => setMode(b.dataset.mode as Mode)),
+  );
+  resetScoresBtn.addEventListener('click', () => {
+    if (confirm('Zerar o placar?')) {
+      scores = { X: 0, O: 0, draw: 0 };
+      saveScores();
+      renderScores();
+    }
+  });
+  if (prefersTouch) {
+    board.addEventListener('touchstart', handleTouchPreview, { passive: true });
+    board.addEventListener('touchend', clearTouchPreview);
+    board.addEventListener('touchcancel', clearTouchPreview);
+  }
+
+  // ============================================================
+  // boot
+  // ============================================================
+  setMode(mode);
+  renderScores();
+</script>

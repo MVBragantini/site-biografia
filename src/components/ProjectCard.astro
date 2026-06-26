@@ -1,0 +1,115 @@
+---
+// pequeno destaque para o jogo da velha na home
+---
+
+<section class="section">
+  <div class="container">
+    <article class="project">
+      <div class="proj-meta">
+        <span class="eyebrow">projeto</span>
+        <h2>Jogo da velha</h2>
+        <p class="lead">
+          Projeto que comecei para estudar JavaScript e fui adicionando
+          camadas: dois modos de jogo, placar persistente, jogada da CPU,
+          háptico no celular. Sem dependências.
+        </p>
+        <ul class="stack">
+          <li>HTML</li>
+          <li>CSS</li>
+          <li>JavaScript</li>
+          <li>localStorage</li>
+        </ul>
+        <a href="/jogo" class="btn btn-primary">Jogar agora →</a>
+      </div>
+
+      <div class="proj-mock" aria-hidden="true">
+        <div class="mini-board">
+          <div class="mc x">X</div>
+          <div class="mc"></div>
+          <div class="mc o">O</div>
+          <div class="mc"></div>
+          <div class="mc x">X</div>
+          <div class="mc"></div>
+          <div class="mc o">O</div>
+          <div class="mc"></div>
+          <div class="mc x">X</div>
+        </div>
+        <span class="mock-label">3 em diagonal</span>
+      </div>
+    </article>
+  </div>
+</section>
+
+<style>
+  .project {
+    display: grid;
+    grid-template-columns: 1.2fr 1fr;
+    gap: var(--space-7);
+    align-items: center;
+    padding: var(--space-7);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+  }
+  .proj-meta h2 {
+    font-size: var(--step-4);
+    margin-block: var(--space-3) var(--space-4);
+  }
+  .stack {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-block: var(--space-5) var(--space-6);
+  }
+  .stack li {
+    padding: 0.3rem 0.7rem;
+    border: 1px solid var(--border);
+    background: var(--surface-2);
+    color: var(--ink-2);
+    border-radius: 999px;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+  }
+
+  .proj-mock {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-3);
+  }
+  .mini-board {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.5rem;
+    width: 100%;
+    max-width: 16rem;
+    aspect-ratio: 1;
+  }
+  .mc {
+    display: grid;
+    place-items: center;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 2rem;
+  }
+  .mc.x {
+    color: var(--accent);
+    background: color-mix(in oklab, var(--accent) 8%, var(--surface));
+    border-color: color-mix(in oklab, var(--accent) 30%, var(--border));
+  }
+  .mc.o { color: #2a6fa0; }
+  .mock-label {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: var(--ink-soft);
+  }
+
+  @media (max-width: 760px) {
+    .project { grid-template-columns: 1fr; padding: var(--space-5); }
+    .proj-mock { order: -1; }
+  }
+</style>
