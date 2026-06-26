@@ -1,0 +1,12 @@
+/* Decap CMS — pequenos ajustes visuais (cores do site) */
+:root {
+  --accent: #e85a2c;
+}
+[class*="LoginButton"],
+.nc-loginPage-button {
+  background: #1c1c20 !important;
+}
+[class*="LoginButton"]:hover,
+.nc-loginPage-button:hover {
+  background: var(--accent) !important;
+}

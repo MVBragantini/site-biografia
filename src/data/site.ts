@@ -1,14 +1,17 @@
+import contato from '../content/_config/contato.json';
+
 export const site = {
-  name: 'Marcus Bragantini',
-  role: 'Automação industrial · CAD · Desenvolvimento web',
-  shortBio:
-    'Atuo entre o chão de fábrica e o código — automação industrial, CAD 3D, IHM/PLC e desenvolvimento web.',
-  location: 'Rio de Janeiro, Brasil',
-  email: 'bragantini34@gmail.com',
-  phone: '+55 21 98017-7454',
-  phoneHref: 'tel:+5521980177454',
-  whatsappHref: 'https://wa.me/5521980177454',
-  github: 'https://github.com/MVBragantini',
+  name: contato.name,
+  role: contato.role,
+  shortBio: contato.shortBio,
+  location: contato.location,
+  email: contato.email,
+  phone: contato.phone,
+  phoneDigits: contato.phoneDigits,
+  phoneHref: `tel:+${contato.phoneDigits}`,
+  whatsappHref: `https://wa.me/${contato.phoneDigits}`,
+  github: contato.github,
+  hero: contato.hero || '/img/marcus.jpg',
   url: 'https://bragantini.com.br',
   nav: [
     { label: 'Início', href: '/' },
@@ -48,9 +51,7 @@ export const trabalhos = [
     descricao:
       'Diagnóstico e reparo de inversor de frequência danificado, devolvendo o equipamento à operação plena.',
     imagem: '/img/inversor-reparado.jpg',
-    creditos: [
-      { papel: 'Manutenção', nome: 'Marcus Bragantini' },
-    ],
+    creditos: [{ papel: 'Manutenção', nome: 'Marcus Bragantini' }],
   },
   {
     titulo: 'Montagem de painéis elétricos',
@@ -58,8 +59,6 @@ export const trabalhos = [
     descricao:
       'Da leitura do diagrama elétrico à montagem física do painel: cabeamento, identificação, comissionamento.',
     imagem: '/img/montagem-painel.jpg',
-    creditos: [
-      { papel: 'Execução', nome: 'Marcus Bragantini' },
-    ],
+    creditos: [{ papel: 'Execução', nome: 'Marcus Bragantini' }],
   },
 ];

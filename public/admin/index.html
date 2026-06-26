@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Admin — bragantini.com.br</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="stylesheet" href="/admin/admin.css" />
+  </head>
+  <body>
+    <script src="https://unpkg.com/decap-cms@^3.6.0/dist/decap-cms.js"></script>
+    <script>
+      // pré-visualização com fontes do site para "manuais"
+      const head = document.head || document.getElementsByTagName('head')[0];
+      const link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href =
+        'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Bricolage+Grotesque:wght@600;700;800&family=JetBrains+Mono:wght@400;500&display=swap';
+      head.appendChild(link);
+
+      const ManualPreview = ({ entry, fieldsMetaData }) => {
+        const data = entry.getIn(['data']).toJS();
+        return h(
+          'article',
+          { style: previewStyles.card },
+          h('span', { style: previewStyles.cat }, data.categoria || '—'),
+          h('h2', { style: previewStyles.title }, data.nome || 'Novo manual'),
+          data.fabricante &&
+            h('p', { style: previewStyles.fab }, data.fabricante),
+          data.observacao &&
+            h('p', { style: previewStyles.obs }, data.observacao),
+          h(
+            'div',
+            { style: previewStyles.foot },
+            data.revisao &&
+              h('span', null, data.revisao),
+            h('span', { style: previewStyles.open }, data.pdf ? 'PDF →' : 'sem PDF'),
+          ),
+        );
+      };
+
+      const FotoPreview = ({ entry, getAsset }) => {
+        const data = entry.getIn(['data']).toJS();
+        const img = data.imagem ? getAsset(data.imagem) : null;
+        return h(
+          'figure',
+          { style: previewStyles.figure },
+          img &&
+            h('img', {
+              src: img.toString(),
+              style: previewStyles.img,
+              alt: data.titulo || '',
+            }),
+          h(
+            'figcaption',
+            { style: previewStyles.fcap },
+            h('span', { style: previewStyles.cat }, data.categoria || '—'),
+            h('h2', { style: previewStyles.title }, data.titulo || 'Nova foto'),
+            data.descricao &&
+              h('p', { style: previewStyles.obs }, data.descricao),
+            (data.local || data.data) &&
+              h(
+                'p',
+                { style: previewStyles.meta },
+                data.local && h('span', null, data.local),
+                data.data &&
+                  h('span', null, ' · ' + new Date(data.data).toLocaleDateString('pt-BR')),
+              ),
+          ),
+        );
+      };
+
+      const h = window.h;
+      const previewStyles = {
+        card: {
+          background: '#fff',
+          border: '1px solid #d9d6cc',
+          borderRadius: 14,
+          padding: 24,
+          maxWidth: 480,
+          fontFamily: 'Inter, system-ui, sans-serif',
+          color: '#1c1c20',
+        },
+        figure: { margin: 0, maxWidth: 720 },
+        img: { width: '100%', borderRadius: 14, marginBottom: 16 },
+        fcap: { fontFamily: 'Inter, system-ui, sans-serif', color: '#1c1c20' },
+        cat: {
+          fontFamily: 'JetBrains Mono, ui-monospace, monospace',
+          fontSize: 12,
+          letterSpacing: 0.8,
+          textTransform: 'uppercase',
+          color: '#e85a2c',
+        },
+        title: {
+          fontFamily: 'Bricolage Grotesque, sans-serif',
+          fontSize: 28,
+          fontWeight: 700,
+          margin: '8px 0',
+        },
+        fab: { color: '#6b6b73', margin: 0 },
+        obs: { color: '#3a3a42', marginTop: 8 },
+        foot: {
+          marginTop: 16,
+          paddingTop: 12,
+          borderTop: '1px dashed #d9d6cc',
+          fontFamily: 'JetBrains Mono, ui-monospace, monospace',
+          fontSize: 12,
+          display: 'flex',
+          justifyContent: 'space-between',
+          color: '#6b6b73',
+        },
+        meta: {
+          fontFamily: 'JetBrains Mono, ui-monospace, monospace',
+          fontSize: 12,
+          color: '#6b6b73',
+          marginTop: 8,
+        },
+        open: { color: '#e85a2c' },
+      };
+
+      CMS.registerPreviewTemplate('manuais', ManualPreview);
+      CMS.registerPreviewTemplate('fotos', FotoPreview);
+    </script>
+  </body>
+</html>

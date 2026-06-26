@@ -1,0 +1,123 @@
+backend:
+  name: github
+  repo: MVBragantini/site-biografia
+  branch: main
+  base_url: https://bragantini.com.br
+  auth_endpoint: api/auth
+
+publish_mode: simple
+site_url: https://bragantini.com.br
+display_url: https://bragantini.com.br
+logo_url: /favicon.svg
+
+# pasta padrão para uploads gerais (raramente usada — cada coleção tem a sua)
+media_folder: public/becape/uploads
+public_folder: /becape/uploads
+
+locale: pt
+slug:
+  encoding: ascii
+  clean_accents: true
+  sanitize_replacement: '-'
+
+collections:
+  # ============================================================
+  # MANUAIS — um PDF por entrada
+  # ============================================================
+  - name: manuais
+    label: 'Manuais'
+    label_singular: 'Manual'
+    description: 'PDFs de inversores, IHMs, PLCs, drives e o que mais aparecer.'
+    folder: 'src/content/manuais'
+    media_folder: '../../../public/becape/manuais'
+    public_folder: '/becape/manuais'
+    create: true
+    slug: '{{slug}}'
+    summary: '{{nome}} — {{fabricante}} ({{categoria}})'
+    sortable_fields: ['nome', 'fabricante', 'categoria', 'adicionadoEm']
+    view_filters:
+      - label: 'Inversores'
+        field: categoria
+        pattern: 'Inversor'
+      - label: 'IHMs'
+        field: categoria
+        pattern: 'IHM'
+      - label: 'PLCs'
+        field: categoria
+        pattern: 'PLC'
+    fields:
+      - { name: nome, label: 'Nome do manual', widget: string, hint: 'Ex.: Inversor CFW09' }
+      - { name: fabricante, label: 'Fabricante', widget: string, required: false, hint: 'WEG, Weintek, Siemens...' }
+      - name: categoria
+        label: 'Categoria'
+        widget: select
+        options:
+          - 'Inversor de frequência'
+          - 'IHM'
+          - 'PLC'
+          - 'Soft-starter'
+          - 'Servoacionamento'
+          - 'Sensor'
+          - 'Fonte de alimentação'
+          - 'Outros'
+        default: 'Outros'
+      - { name: pdf, label: 'Arquivo PDF', widget: file, allow_multiple: false, media_library: { config: { multiple: false } } }
+      - { name: revisao, label: 'Revisão', widget: string, required: false, hint: 'Ex.: Rev. 4.0X / 2024' }
+      - { name: observacao, label: 'Observação', widget: text, required: false }
+      - { name: adicionadoEm, label: 'Adicionado em', widget: datetime, required: false, picker_utc: false, format: 'YYYY-MM-DD', date_format: 'YYYY-MM-DD', time_format: false, default: '' }
+
+  # ============================================================
+  # FOTOS — álbum de campo
+  # ============================================================
+  - name: fotos
+    label: 'Fotos'
+    label_singular: 'Foto'
+    description: 'Registro fotográfico de projetos, manutenções e painéis.'
+    folder: 'src/content/fotos'
+    media_folder: '../../../public/becape/fotos'
+    public_folder: '/becape/fotos'
+    create: true
+    slug: '{{slug}}'
+    summary: '{{titulo}} — {{categoria}}'
+    sortable_fields: ['titulo', 'categoria', 'data']
+    view_filters:
+      - { label: 'Projetos', field: categoria, pattern: 'Projetos' }
+      - { label: 'Manutenção', field: categoria, pattern: 'Manutenção' }
+      - { label: 'Painéis', field: categoria, pattern: 'Painéis' }
+    fields:
+      - { name: titulo, label: 'Título', widget: string }
+      - { name: descricao, label: 'Descrição', widget: text, required: false }
+      - { name: imagem, label: 'Imagem', widget: image, media_library: { config: { multiple: false } } }
+      - name: categoria
+        label: 'Categoria'
+        widget: select
+        options:
+          - 'Projetos'
+          - 'Manutenção'
+          - 'Painéis'
+          - 'Campo'
+          - 'Bancada'
+          - 'Outros'
+        default: 'Outros'
+      - { name: local, label: 'Local', widget: string, required: false, hint: 'Ex.: Oficina, Cliente X, Bancada' }
+      - { name: data, label: 'Data', widget: datetime, required: false, picker_utc: false, format: 'YYYY-MM-DD', date_format: 'YYYY-MM-DD', time_format: false }
+
+  # ============================================================
+  # DADOS DO SITE — config global (one-off file collection)
+  # ============================================================
+  - name: configuracoes
+    label: 'Configurações'
+    files:
+      - name: contato
+        label: 'Contatos & informações pessoais'
+        file: 'src/content/_config/contato.json'
+        fields:
+          - { name: name, label: 'Nome', widget: string }
+          - { name: role, label: 'Cargo / Subtítulo', widget: string }
+          - { name: shortBio, label: 'Mini-biografia (hero)', widget: text }
+          - { name: location, label: 'Localização', widget: string }
+          - { name: email, label: 'Email', widget: string }
+          - { name: phone, label: 'Telefone', widget: string, hint: 'Formato visível, ex.: +55 21 98017-7454' }
+          - { name: phoneDigits, label: 'Telefone só dígitos', widget: string, hint: 'Sem espaços/sinais. Ex.: 5521980177454' }
+          - { name: github, label: 'URL do GitHub', widget: string }
+          - { name: hero, label: 'Foto do hero', widget: image, required: false, hint: 'Substitui a foto da página inicial.' }
