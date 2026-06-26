@@ -70,33 +70,40 @@ function sendPostMessage(res, status, payload) {
 </style>
 </head><body>
 <h2 class="${isSuccess ? 'ok' : 'fail'}">${isSuccess ? 'Autorização concluída' : 'Autorização falhou'}</h2>
-${isSuccess ? '<p>Esta janela fecha em instantes…</p>' : `<p>Motivo:</p><pre>${escapeHtml(typeof payload === 'string' ? payload : JSON.stringify(payload))}</pre><button onclick="window.close()">Fechar</button>`}
+${isSuccess ? '<p>Token recebido. Se a janela do admin não atualizar sozinha, abra o Console (F12) e me avise.</p><pre id="debug-info" style="margin-top:1rem">aguardando…</pre><button onclick="window.close()">Fechar manualmente</button>' : `<p>Motivo:</p><pre>${escapeHtml(typeof payload === 'string' ? payload : JSON.stringify(payload))}</pre><button onclick="window.close()">Fechar</button>`}
 <script>
 (function(){
   var msg = ${JSON.stringify(message)};
   var sent = 0;
+  var debugEl = document.getElementById('debug-info');
+  function log(s){
+    console.log('[OAuth callback]', s);
+    if (debugEl) debugEl.textContent = s;
+  }
   function send(){
     try {
-      if (window.opener) {
+      if (window.opener && !window.opener.closed) {
         window.opener.postMessage(msg, '*');
         sent++;
+        log('postMessage enviada ('+sent+'x) — opener: ' + window.opener.location.origin);
+      } else {
+        log('window.opener é null ou fechado — popup sem opener!');
       }
-    } catch(e) {}
+    } catch(e) {
+      log('Erro ao postar: ' + e.message);
+    }
   }
-  // listener padrão do Decap CMS
   window.addEventListener('message', function(e){
+    log('recebeu mensagem: ' + JSON.stringify({origin: e.origin, data: e.data}).slice(0, 200));
     if (e.data === 'authorizing:github') send();
   }, false);
-  // envia agora
   send();
-  // re-envia 5 vezes em 1s para garantir
   var t = 0;
   var iv = setInterval(function(){
     t++;
     send();
     if (t >= 5) clearInterval(iv);
-  }, 200);
-  ${isSuccess ? 'setTimeout(function(){ window.close(); }, 1200);' : ''}
+  }, 300);
 })();
 </script>
 </body></html>`;
