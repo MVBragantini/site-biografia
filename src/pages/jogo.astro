@@ -1,0 +1,29 @@
+---
+import Base from '../layouts/Base.astro';
+import { site } from '../data/site';
+---
+
+<Base title={`Jogo da Velha — ${site.name}`}>
+  <section class="section">
+    <div class="container-narrow">
+      <span class="eyebrow">projeto</span>
+      <h1>Jogo da velha — em integração.</h1>
+      <p class="lead">
+        O jogo já existe e está hospedado separadamente. Na Fase 4 do redesign vou
+        polir o visual e trazê-lo para dentro deste site.
+      </p>
+      <a
+        href="https://bragantini.com.br/jogo/"
+        class="btn btn-primary"
+        target="_blank"
+        rel="noopener"
+      >
+        Abrir versão atual →
+      </a>
+    </div>
+  </section>
+</Base>
+
+<style>
+  h1 { font-size: var(--step-5); margin-block: var(--space-3) var(--space-5); }
+</style>

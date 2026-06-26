@@ -1,0 +1,115 @@
+---
+import { site } from '../data/site';
+
+interface Props {
+  title?: string;
+  text?: string;
+  ctaLabel?: string;
+  ctaHref?: string;
+}
+const {
+  title = 'BECAPE — meus manuais e fotos',
+  text = 'Acesso rápido aos manuais técnicos (CFW, IHMs, drives) e álbum de campo. Atualizado direto pelo painel /admin.',
+  ctaLabel = 'Acessar BECAPE',
+  ctaHref = '/becape',
+} = Astro.props;
+---
+
+<section class="cta-section">
+  <div class="container cta-grid">
+    <div class="cta-copy">
+      <span class="eyebrow">/becape</span>
+      <h2>{title}</h2>
+      <p>{text}</p>
+      <div class="actions">
+        <a href={ctaHref} class="btn btn-primary">{ctaLabel}</a>
+        <a href="/jogo" class="btn btn-ghost">Ver jogo da velha →</a>
+      </div>
+    </div>
+    <aside class="cta-side" aria-hidden="true">
+      <div class="ascii">
+        <pre>┌────────────┐
+│ MANUAL CFW │
+│ ─── PDF ── │
+│ rev. 2024  │
+└────────────┘</pre>
+        <pre>┌────────────┐
+│ PAINEL  03 │
+│ FOTO  HOJE │
+│ campo ▓▓▓▓ │
+└────────────┘</pre>
+      </div>
+    </aside>
+  </div>
+</section>
+
+<style>
+  .cta-section {
+    margin-block: var(--space-9);
+    padding-block: var(--space-8);
+    background:
+      radial-gradient(ellipse at 90% 0%, color-mix(in oklab, var(--accent) 12%, transparent), transparent 60%),
+      var(--ink);
+    color: var(--surface);
+  }
+  .cta-grid {
+    display: grid;
+    grid-template-columns: 1.2fr 1fr;
+    gap: var(--space-7);
+    align-items: center;
+  }
+  .cta-copy h2 {
+    color: var(--surface);
+    font-size: var(--step-5);
+    margin-block: var(--space-3) var(--space-4);
+  }
+  .cta-copy .eyebrow { color: var(--accent); }
+  .cta-copy .eyebrow::before { background: var(--accent); }
+  .cta-copy p {
+    color: color-mix(in oklab, var(--surface) 75%, transparent);
+    max-width: 36rem;
+    margin-bottom: var(--space-6);
+  }
+  .actions { display: flex; gap: var(--space-3); flex-wrap: wrap; }
+  .cta-section .btn-primary {
+    background: var(--accent);
+    color: var(--surface);
+  }
+  .cta-section .btn-primary:hover { background: var(--surface); color: var(--ink); }
+  .cta-section .btn-ghost {
+    color: var(--surface);
+    border-color: color-mix(in oklab, var(--surface) 35%, transparent);
+  }
+  .cta-section .btn-ghost:hover {
+    color: var(--ink);
+    background: var(--surface);
+    border-color: var(--surface);
+  }
+
+  .ascii {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    font-family: var(--font-mono);
+    color: color-mix(in oklab, var(--surface) 50%, transparent);
+    font-size: 0.85rem;
+    line-height: 1.4;
+  }
+  .ascii pre {
+    margin: 0;
+    padding: var(--space-3);
+    background: color-mix(in oklab, var(--surface) 4%, transparent);
+    border: 1px dashed color-mix(in oklab, var(--surface) 25%, transparent);
+    border-radius: var(--radius);
+    width: max-content;
+  }
+  .ascii pre:nth-child(2) {
+    margin-left: 4rem;
+    color: color-mix(in oklab, var(--accent) 85%, var(--surface));
+    border-color: color-mix(in oklab, var(--accent) 60%, transparent);
+  }
+  @media (max-width: 820px) {
+    .cta-grid { grid-template-columns: 1fr; }
+    .cta-side { display: none; }
+  }
+</style>

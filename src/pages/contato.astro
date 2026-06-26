@@ -1,0 +1,116 @@
+---
+import Base from '../layouts/Base.astro';
+import { site } from '../data/site';
+---
+
+<Base title={`Contato — ${site.name}`}>
+  <section class="section">
+    <div class="container-narrow">
+      <span class="eyebrow">contato</span>
+      <h1>Vamos falar do projeto.</h1>
+      <p class="lead">
+        Manutenção, retrofit, desenho técnico ou um site sob medida — me chame por onde for melhor.
+      </p>
+
+      <ul class="channels">
+        <li>
+          <a href={`mailto:${site.email}`}>
+            <span class="ch-label">Email</span>
+            <span class="ch-value">{site.email}</span>
+            <span class="ch-arrow" aria-hidden="true">→</span>
+          </a>
+        </li>
+        <li>
+          <a href={site.whatsappHref} target="_blank" rel="noopener">
+            <span class="ch-label">WhatsApp</span>
+            <span class="ch-value">{site.phone}</span>
+            <span class="ch-arrow" aria-hidden="true">→</span>
+          </a>
+        </li>
+        <li>
+          <a href={site.phoneHref}>
+            <span class="ch-label">Telefone</span>
+            <span class="ch-value">{site.phone}</span>
+            <span class="ch-arrow" aria-hidden="true">→</span>
+          </a>
+        </li>
+        <li>
+          <a href={site.github} target="_blank" rel="noopener">
+            <span class="ch-label">GitHub</span>
+            <span class="ch-value">@MVBragantini</span>
+            <span class="ch-arrow" aria-hidden="true">→</span>
+          </a>
+        </li>
+      </ul>
+
+      <div class="loc">
+        <strong>Base de operações</strong>
+        <p>{site.location}</p>
+      </div>
+    </div>
+  </section>
+</Base>
+
+<style>
+  h1 {
+    font-size: var(--step-5);
+    margin-block: var(--space-3) var(--space-5);
+  }
+  .channels {
+    margin-block: var(--space-7);
+    display: flex;
+    flex-direction: column;
+    border-top: 1px solid var(--border);
+  }
+  .channels li { border-bottom: 1px solid var(--border); }
+  .channels a {
+    display: grid;
+    grid-template-columns: 8rem 1fr auto;
+    align-items: center;
+    gap: var(--space-4);
+    padding: var(--space-5) var(--space-2);
+    transition: background var(--dur) var(--ease),
+                padding var(--dur) var(--ease);
+  }
+  .channels a:hover {
+    background: var(--surface);
+    padding-inline: var(--space-4);
+  }
+  .ch-label {
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--ink-soft);
+  }
+  .ch-value {
+    font-size: var(--step-1);
+    color: var(--ink);
+  }
+  .ch-arrow {
+    color: var(--accent);
+    font-size: var(--step-1);
+    transition: transform var(--dur) var(--ease);
+  }
+  .channels a:hover .ch-arrow { transform: translateX(4px); }
+
+  .loc {
+    padding: var(--space-5);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+  }
+  .loc strong {
+    display: block;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--ink-soft);
+    margin-bottom: var(--space-2);
+  }
+  @media (max-width: 600px) {
+    .channels a { grid-template-columns: 1fr auto; }
+    .ch-label { grid-column: 1 / -1; }
+  }
+</style>

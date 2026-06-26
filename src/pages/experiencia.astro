@@ -1,0 +1,165 @@
+---
+import Base from '../layouts/Base.astro';
+import { trabalhos, site } from '../data/site';
+
+const experiencias = [
+  {
+    titulo: 'Automação industrial',
+    detalhe:
+      'Programação de IHM, lógicas de PLC, retrofitting de máquinas e projetos de eficiência energética para a indústria termoplástica.',
+  },
+  {
+    titulo: 'Cadista (Inventor)',
+    detalhe:
+      'Modelagem 3D de peças e montagens, desenhos de fabricação, vistas projetadas, lista técnica e acompanhamento de produção.',
+  },
+  {
+    titulo: 'Manutenção industrial',
+    detalhe:
+      'Diagnóstico e reparo de inversores, comando e potência, manutenção preditiva e corretiva.',
+  },
+  {
+    titulo: 'Montagem de painéis elétricos',
+    detalhe:
+      'Leitura de diagramas, cabeamento, identificação, comissionamento e energização de painéis de comando.',
+  },
+];
+---
+
+<Base title={`Experiência — ${site.name}`}>
+  <section class="section header">
+    <div class="container-narrow">
+      <span class="eyebrow">experiência</span>
+      <h1>Onde o desenho vira aço.</h1>
+      <p class="lead">
+        Cada projeto abaixo passou por algumas etapas: estudo do que precisa funcionar,
+        desenho técnico, montagem, energização. Quando faltou energia para virar a chave,
+        eu fiquei até virar.
+      </p>
+    </div>
+  </section>
+
+  <section class="section grid-section">
+    <div class="container">
+      <h2 class="grid-title">Atuações</h2>
+      <ul class="exp">
+        {experiencias.map((e, i) => (
+          <li>
+            <span class="exp-index">{String(i + 1).padStart(2, '0')}</span>
+            <div>
+              <h3>{e.titulo}</h3>
+              <p>{e.detalhe}</p>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
+  </section>
+
+  <section class="section works-section">
+    <div class="container">
+      <h2 class="grid-title">Projetos selecionados</h2>
+      <div class="grid">
+        {trabalhos.map((t) => (
+          <article class="work">
+            <figure>
+              <img src={t.imagem} alt={t.titulo} loading="lazy" decoding="async" />
+            </figure>
+            <div class="body">
+              <span class="cat">{t.categoria}</span>
+              <h3>{t.titulo}</h3>
+              <p>{t.descricao}</p>
+              <ul class="creds">
+                {t.creditos.map((c) => (
+                  <li><strong>{c.papel}</strong>{c.nome}</li>
+                ))}
+              </ul>
+            </div>
+          </article>
+        ))}
+      </div>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .header h1 {
+    font-size: var(--step-5);
+    margin-block: var(--space-3) var(--space-5);
+  }
+  .grid-title {
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--ink-soft);
+    margin-bottom: var(--space-6);
+  }
+  .exp {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));
+    gap: var(--space-5);
+  }
+  .exp li {
+    display: flex;
+    gap: var(--space-4);
+    padding: var(--space-5);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+  }
+  .exp-index {
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    color: var(--accent);
+    padding-top: 0.2rem;
+  }
+  .exp h3 { font-size: var(--step-1); margin-bottom: var(--space-2); }
+  .exp p { color: var(--ink-2); font-size: var(--step--1); }
+
+  .works-section { background: var(--surface-2); }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));
+    gap: var(--space-5);
+  }
+  .work {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  .work figure { aspect-ratio: 4 / 3; overflow: hidden; }
+  .work img {
+    width: 100%; height: 100%;
+    object-fit: cover;
+    transition: transform var(--dur-slow) var(--ease);
+  }
+  .work:hover img { transform: scale(1.04); }
+  .body { padding: var(--space-5); display: flex; flex-direction: column; gap: var(--space-3); flex: 1; }
+  .cat {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--accent);
+  }
+  .body h3 { font-size: var(--step-1); }
+  .body p { color: var(--ink-2); font-size: var(--step--1); }
+  .creds {
+    margin-top: auto;
+    padding-top: var(--space-4);
+    border-top: 1px dashed var(--border);
+    display: flex; flex-direction: column; gap: 0.2rem;
+    font-size: 0.78rem; color: var(--ink-soft);
+    font-family: var(--font-mono);
+  }
+  .creds strong {
+    display: inline-block;
+    width: 6rem;
+    color: var(--ink-2);
+    font-weight: 500;
+  }
+</style>

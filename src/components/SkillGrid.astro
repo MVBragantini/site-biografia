@@ -1,0 +1,84 @@
+---
+import { skills } from '../data/site';
+---
+
+<section class="section skills">
+  <div class="container">
+    <header class="head">
+      <span class="eyebrow">competências</span>
+      <h2>Onde eu opero</h2>
+      <p class="lead">
+        Atuo no ponto onde o desenho técnico, o controle e o software se encontram.
+      </p>
+    </header>
+
+    <ul class="grid">
+      {skills.map((s, i) => (
+        <li class="card" style={`--i:${i}`}>
+          <span class="card-index">{String(i + 1).padStart(2, '0')}</span>
+          <h3>{s.name}</h3>
+          <p>{s.detail}</p>
+          <span class="level">{s.level}</span>
+        </li>
+      ))}
+    </ul>
+  </div>
+</section>
+
+<style>
+  .head {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    margin-bottom: var(--space-7);
+    max-width: 40rem;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+    gap: var(--space-4);
+  }
+  .card {
+    position: relative;
+    padding: var(--space-5);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    transition: transform var(--dur) var(--ease),
+                box-shadow var(--dur) var(--ease),
+                border-color var(--dur) var(--ease);
+  }
+  .card:hover {
+    transform: translateY(-2px);
+    border-color: var(--ink-2);
+    box-shadow: var(--shadow-md);
+  }
+  .card-index {
+    position: absolute;
+    top: var(--space-4);
+    right: var(--space-4);
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: var(--ink-muted);
+  }
+  .card h3 {
+    font-size: var(--step-1);
+    margin-bottom: var(--space-3);
+    padding-right: 2rem;
+  }
+  .card p {
+    color: var(--ink-2);
+    font-size: var(--step--1);
+    margin-bottom: var(--space-4);
+  }
+  .level {
+    display: inline-block;
+    padding: 0.25rem 0.6rem;
+    background: var(--accent-soft);
+    color: var(--accent-hover);
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-family: var(--font-mono);
+    letter-spacing: 0.04em;
+  }
+</style>

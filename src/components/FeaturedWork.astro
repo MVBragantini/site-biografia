@@ -1,0 +1,107 @@
+---
+import { trabalhos } from '../data/site';
+---
+
+<section class="section featured">
+  <div class="container">
+    <header class="head">
+      <div>
+        <span class="eyebrow">trabalhos</span>
+        <h2>Onde o desenho vira aço</h2>
+      </div>
+      <p class="lead">
+        Uma seleção dos projetos que passaram pelas minhas mãos — do conceito ao painel comissionado.
+      </p>
+    </header>
+
+    <div class="grid">
+      {trabalhos.map((t, i) => (
+        <article class="work" style={`--i:${i}`}>
+          <a href="/experiencia" class="work-media">
+            <img src={t.imagem} alt={t.titulo} loading="lazy" decoding="async" />
+          </a>
+          <div class="work-body">
+            <span class="cat">{t.categoria}</span>
+            <h3>{t.titulo}</h3>
+            <p>{t.descricao}</p>
+            <ul class="creds">
+              {t.creditos.map((c) => (
+                <li><strong>{c.papel}</strong>{c.nome}</li>
+              ))}
+            </ul>
+          </div>
+        </article>
+      ))}
+    </div>
+  </div>
+</section>
+
+<style>
+  .head {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    gap: var(--space-5);
+    margin-bottom: var(--space-7);
+  }
+  .head .lead { margin: 0; max-width: 30rem; text-align: right; }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));
+    gap: var(--space-5);
+  }
+  .work {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    transition: transform var(--dur) var(--ease),
+                box-shadow var(--dur) var(--ease);
+  }
+  .work:hover { transform: translateY(-3px); box-shadow: var(--shadow-lg); }
+  .work-media {
+    display: block;
+    aspect-ratio: 4 / 3;
+    overflow: hidden;
+    background: var(--surface-2);
+  }
+  .work-media img {
+    width: 100%; height: 100%;
+    object-fit: cover;
+    transition: transform var(--dur-slow) var(--ease);
+  }
+  .work:hover .work-media img { transform: scale(1.04); }
+  .work-body { padding: var(--space-5); display: flex; flex-direction: column; gap: var(--space-3); flex: 1; }
+  .cat {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--accent);
+  }
+  .work-body h3 { font-size: var(--step-1); }
+  .work-body p { color: var(--ink-2); font-size: var(--step--1); }
+  .creds {
+    margin-top: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    padding-top: var(--space-4);
+    border-top: 1px dashed var(--border);
+    font-size: 0.78rem;
+    color: var(--ink-soft);
+    font-family: var(--font-mono);
+  }
+  .creds strong {
+    display: inline-block;
+    width: 6rem;
+    color: var(--ink-2);
+    font-weight: 500;
+  }
+  @media (max-width: 700px) {
+    .head { flex-direction: column; align-items: flex-start; }
+    .head .lead { text-align: left; }
+  }
+</style>

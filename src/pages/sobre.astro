@@ -1,0 +1,109 @@
+---
+import Base from '../layouts/Base.astro';
+import { site } from '../data/site';
+---
+
+<Base title={`Sobre — ${site.name}`}>
+  <section class="section">
+    <div class="container-narrow about">
+      <span class="eyebrow">sobre</span>
+      <h1>Onde a oficina encontra o terminal.</h1>
+
+      <p class="lead">
+        Sou {site.name}, técnico em automação industrial e desenvolvedor.
+        Há mais de uma década venho transitando entre dois mundos que parecem opostos
+        — o do chão de fábrica, com suas vibrações e seu cheiro de óleo, e o do código,
+        feito de linhas e indentação. Aprendi cedo que os dois falam a mesma língua:
+        causa e efeito.
+      </p>
+
+      <div class="bio">
+        <p>
+          Comecei como cadista, desenhando peças em Inventor e acompanhando montagens
+          até o último parafuso. Esse hábito de pensar em três dimensões depois virou o
+          alicerce do meu trabalho com IHM e PLC: cada tela e cada lógica precisam
+          refletir uma máquina que existe de verdade, com tempo de resposta, com inércia.
+        </p>
+        <p>
+          A frente de manutenção me ensinou outra coisa — que um equipamento parado
+          custa caro, e que diagnóstico é metade arte. Já recuperei inversores danificados,
+          montei painéis do diagrama à energização, e participei de projetos de
+          retrofitting com foco em eficiência energética para a indústria termoplástica.
+        </p>
+        <p>
+          Em paralelo, fui aprendendo HTML, CSS e JavaScript. Hoje uso essa
+          ponta para construir ferramentas internas e meus próprios projetos,
+          incluindo este site — que deixei de tratar como vitrine e passei a tratar
+          como uma extensão da bancada. Por isso a seção <a href="/becape">BECAPE</a>:
+          é onde guardo os manuais que consulto toda semana e o registro fotográfico
+          dos projetos em campo.
+        </p>
+      </div>
+
+      <dl class="card-list">
+        <div>
+          <dt>Cidade</dt>
+          <dd>{site.location}</dd>
+        </div>
+        <div>
+          <dt>Foco principal</dt>
+          <dd>Automação industrial, IHM/PLC, CAD 3D</dd>
+        </div>
+        <div>
+          <dt>Outras frentes</dt>
+          <dd>Front-end (HTML, CSS, JS), manutenção, montagem de painéis</dd>
+        </div>
+        <div>
+          <dt>Como prefiro trabalhar</dt>
+          <dd>Próximo do equipamento, com escopo claro e prazos honestos</dd>
+        </div>
+      </dl>
+
+      <div class="cta-row">
+        <a href="/experiencia" class="btn btn-primary">Ver os trabalhos</a>
+        <a href="/contato" class="btn btn-ghost">Conversar comigo</a>
+      </div>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .about h1 {
+    font-size: var(--step-5);
+    margin-block: var(--space-3) var(--space-5);
+  }
+  .bio {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    margin-block: var(--space-6) var(--space-7);
+    color: var(--ink-2);
+  }
+  .bio a { color: var(--accent); }
+  .bio a:hover { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 3px; }
+
+  .card-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+    gap: var(--space-4);
+    padding: var(--space-5);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+  }
+  .card-list dt {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--ink-soft);
+    margin-bottom: 0.25rem;
+  }
+  .card-list dd { color: var(--ink); font-size: var(--step--1); }
+
+  .cta-row {
+    display: flex;
+    gap: var(--space-3);
+    margin-top: var(--space-7);
+  }
+</style>

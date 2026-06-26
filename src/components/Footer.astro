@@ -1,0 +1,87 @@
+---
+import { site } from '../data/site';
+const year = new Date().getFullYear();
+---
+
+<footer class="site-footer">
+  <div class="container footer-grid">
+    <div>
+      <p class="foot-brand">{site.name}</p>
+      <p class="foot-tag">{site.role}</p>
+    </div>
+
+    <div class="foot-col">
+      <h4>Navegação</h4>
+      <ul>
+        {site.nav.map((item) => (
+          <li><a href={item.href}>{item.label}</a></li>
+        ))}
+      </ul>
+    </div>
+
+    <div class="foot-col">
+      <h4>Contato</h4>
+      <ul>
+        <li><a href={`mailto:${site.email}`}>{site.email}</a></li>
+        <li><a href={site.phoneHref}>{site.phone}</a></li>
+        <li><a href={site.whatsappHref} target="_blank" rel="noopener">WhatsApp</a></li>
+        <li><a href={site.github} target="_blank" rel="noopener">GitHub</a></li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="container foot-bottom">
+    <span>© {year} {site.name}</span>
+    <span class="foot-meta">{site.location}</span>
+  </div>
+</footer>
+
+<style>
+  .site-footer {
+    margin-top: var(--space-9);
+    padding-block: var(--space-7) var(--space-5);
+    background: var(--surface-2);
+    border-top: 1px solid var(--border);
+    color: var(--ink-2);
+    font-size: var(--step--1);
+  }
+  .footer-grid {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr 1fr;
+    gap: var(--space-6);
+    padding-bottom: var(--space-6);
+  }
+  .foot-brand {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: var(--step-1);
+    color: var(--ink);
+  }
+  .foot-tag {
+    margin-top: var(--space-1);
+    color: var(--ink-soft);
+  }
+  .foot-col h4 {
+    font-family: var(--font-mono);
+    font-size: var(--step--1);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--ink-soft);
+    margin-bottom: var(--space-3);
+  }
+  .foot-col ul { display: flex; flex-direction: column; gap: var(--space-2); }
+  .foot-col a { color: var(--ink-2); transition: color var(--dur) var(--ease); }
+  .foot-col a:hover { color: var(--accent); }
+  .foot-bottom {
+    display: flex;
+    justify-content: space-between;
+    padding-top: var(--space-5);
+    border-top: 1px solid var(--border);
+    color: var(--ink-muted);
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+  }
+  @media (max-width: 640px) {
+    .footer-grid { grid-template-columns: 1fr; }
+  }
+</style>
