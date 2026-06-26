@@ -1,12 +1,12 @@
 {
+  "github": "https://github.com/MVBragantini",
+  "logo": "",
   "name": "Marcus Bragantini",
-  "role": "Automação industrial · CAD · Desenvolvimento web",
   "shortBio": "Atuo entre o chão de fábrica e o código — automação industrial, CAD 3D, IHM/PLC e desenvolvimento web.",
-  "location": "Rio de Janeiro, Brasil",
-  "email": "bragantini34@gmail.com",
   "phone": "+55 21 98017-7454",
   "phoneDigits": "5521980177454",
-  "github": "https://github.com/MVBragantini",
+  "location": "Rio de Janeiro, Brasil",
+  "role": "Automação industrial · CAD · Desenvolvimento web",
   "hero": "/img/marcus.jpg",
-  "logo": ""
+  "email": "marcus@bragantini.com.br"
 }
