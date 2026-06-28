@@ -8,7 +8,7 @@ backend:
 publish_mode: simple
 site_url: https://bragantini.com.br
 display_url: https://bragantini.com.br
-logo_url: /favicon.svg
+logo_url: /becape/uploads/logo_mvb.png
 
 # pasta padrão para uploads gerais (raramente usada — cada coleção tem a sua)
 media_folder: public/becape/uploads
