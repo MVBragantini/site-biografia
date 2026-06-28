@@ -1,5 +1,15 @@
 import contato from '../content/_config/contato.json';
 
+// Cache-busting: a Vercel define VERCEL_GIT_COMMIT_SHA em todo build.
+// Adicionamos ?v=<hash> em assets dinâmicos para forçar reload quando o
+// conteúdo é substituído (mesmo caminho, conteúdo novo).
+const buildId = (process.env.VERCEL_GIT_COMMIT_SHA || 'dev').slice(0, 8);
+export function bust(url: string): string {
+  if (!url) return url;
+  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+  return url + (url.includes('?') ? '&' : '?') + 'v=' + buildId;
+}
+
 export const site = {
   name: contato.name,
   role: contato.role,

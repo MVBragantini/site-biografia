@@ -1,5 +1,5 @@
 ---
-import { site } from '../data/site';
+import { site, bust } from '../data/site';
 const path = Astro.url.pathname.replace(/\/$/, '') || '/';
 ---
 
@@ -8,7 +8,7 @@ const path = Astro.url.pathname.replace(/\/$/, '') || '/';
     <a href="/" class="brand" aria-label="Início">
       <span class="brand-mark" aria-hidden="true">
         {site.logo ? (
-          <img src={site.logo} alt="" />
+          <img src={bust(site.logo)} alt="" />
         ) : (
           <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
             <rect x="2" y="2" width="28" height="28" rx="4" fill="var(--ink)" />

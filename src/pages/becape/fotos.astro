@@ -1,7 +1,7 @@
 ---
 import { getCollection } from 'astro:content';
 import Base from '../../layouts/Base.astro';
-import { site } from '../../data/site';
+import { site, bust } from '../../data/site';
 
 const fotos = (await getCollection('fotos')).sort((a, b) => {
   const da = a.data.data?.getTime() ?? 0;
@@ -41,13 +41,13 @@ const categorias = [...new Set(fotos.map((f) => f.data.categoria))].sort();
             <button
               type="button"
               class="ph-btn"
-              data-src={f.data.imagem}
+              data-src={bust(f.data.imagem)}
               data-titulo={f.data.titulo}
               data-descricao={f.data.descricao ?? ''}
               data-local={f.data.local ?? ''}
               data-data={f.data.data ? f.data.data.toLocaleDateString('pt-BR') : ''}
             >
-              <img src={f.data.imagem} alt={f.data.titulo} loading="lazy" decoding="async" />
+              <img src={bust(f.data.imagem)} alt={f.data.titulo} loading="lazy" decoding="async" />
               <div class="ph-overlay">
                 <span class="ph-cat">{f.data.categoria}</span>
                 <h3>{f.data.titulo}</h3>
