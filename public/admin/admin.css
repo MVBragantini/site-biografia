@@ -10,3 +10,8 @@
 .nc-loginPage-button:hover {
   background: var(--accent) !important;
 }
+
+/* Remove o fundo branco do PNG da logo (login + topo do painel) */
+img[src*="logo_mvb"] {
+  mix-blend-mode: multiply;
+}
