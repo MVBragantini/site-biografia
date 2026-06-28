@@ -74,7 +74,7 @@ const path = Astro.url.pathname.replace(/\/$/, '') || '/';
     color: var(--ink);
   }
   .brand-mark {
-    height: 2.25rem;
+    height: 3rem;
     color: var(--ink);
     display: flex;
     align-items: center;
@@ -84,6 +84,11 @@ const path = Astro.url.pathname.replace(/\/$/, '') || '/';
     height: 100%;
     width: auto;
     object-fit: contain;
+  }
+  /* Remove o fundo branco do PNG do logo combinando com o off-white do header.
+     Funciona quando o logo é monocromático escuro sobre branco. */
+  .brand-mark img {
+    mix-blend-mode: multiply;
   }
   .brand-text { display: flex; flex-direction: column; line-height: 1.1; }
   .brand-name {
