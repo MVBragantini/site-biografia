@@ -77,15 +77,19 @@ const path = Astro.url.pathname.replace(/\/$/, '') || '/';
   }
   .brand-mark {
     height: 3rem;
+    width: 3rem;
+    flex-shrink: 0;
     color: var(--ink);
-    display: flex;
-    align-items: center;
+    display: grid;
+    place-items: center;
+    isolation: isolate;
   }
   .brand-mark svg,
   .brand-mark img {
+    width: 100%;
     height: 100%;
-    width: auto;
     object-fit: contain;
+    display: block;
   }
   /* Remove o fundo branco do PNG do logo combinando com o off-white do header.
      Funciona quando o logo é monocromático escuro sobre branco. */
@@ -165,7 +169,7 @@ const path = Astro.url.pathname.replace(/\/$/, '') || '/';
       padding-block: var(--space-3);
     }
     .brand { gap: var(--space-2); min-width: 0; }
-    .brand-mark { height: 2.4rem; }
+    .brand-mark { height: 2.4rem; width: 2.4rem; }
     .brand-text { min-width: 0; }
     .brand-name { font-size: 1rem; }
     /* tag fica ruim em telas estreitas — esconde abaixo do breakpoint */
@@ -195,7 +199,7 @@ const path = Astro.url.pathname.replace(/\/$/, '') || '/';
   }
 
   @media (max-width: 380px) {
-    .brand-mark { height: 2.1rem; }
+    .brand-mark { height: 2.1rem; width: 2.1rem; }
     .brand-name { font-size: 0.95rem; }
   }
 </style>
