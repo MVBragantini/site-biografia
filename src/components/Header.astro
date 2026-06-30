@@ -186,12 +186,25 @@ const path = Astro.url.pathname.replace(/\/$/, '') || '/';
       background: var(--bg);
       border-bottom: 1px solid var(--border-soft);
       padding: var(--space-3) var(--space-5) var(--space-5);
-      transform: translateY(-110%);
-      transition: transform var(--dur) var(--ease);
       max-height: calc(100vh - 4rem);
       overflow-y: auto;
+      /* esconde sem usar translate negativo (que vazava acima do header) */
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(-8px);
+      pointer-events: none;
+      transition: opacity var(--dur) var(--ease),
+                  transform var(--dur) var(--ease),
+                  visibility var(--dur);
+      z-index: 1;
     }
-    .nav.open { transform: translateY(0); box-shadow: var(--shadow-md); }
+    .nav.open {
+      opacity: 1;
+      visibility: visible;
+      transform: translateY(0);
+      pointer-events: auto;
+      box-shadow: var(--shadow-md);
+    }
     .nav ul { flex-direction: column; gap: 0; }
     .nav-link {
       display: block;
