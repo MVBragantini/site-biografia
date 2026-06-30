@@ -88,6 +88,8 @@ body {
   background: var(--bg);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  /* respeita safe-areas do iPhone na base (Footer já cai aqui) */
+  padding-bottom: env(safe-area-inset-bottom);
 }
 img, picture, svg, video { display: block; max-width: 100%; height: auto; }
 input, button, textarea, select { font: inherit; color: inherit; }

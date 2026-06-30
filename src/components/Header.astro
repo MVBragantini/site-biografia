@@ -59,6 +59,10 @@ const path = Astro.url.pathname.replace(/\/$/, '') || '/';
     backdrop-filter: saturate(140%) blur(10px);
     -webkit-backdrop-filter: saturate(140%) blur(10px);
     border-bottom: 1px solid var(--border-soft);
+    /* respeita o notch / dynamic island do iPhone (viewport-fit=cover) */
+    padding-top: env(safe-area-inset-top);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
   }
   .header-inner {
     position: relative;
