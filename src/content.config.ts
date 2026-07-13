@@ -26,4 +26,18 @@ const fotos = defineCollection({
   }),
 });
 
-export const collections = { manuais, fotos };
+const projetos = defineCollection({
+  loader: glob({ pattern: '**/*.md', base: 'src/content/projetos' }),
+  schema: z.object({
+    titulo: z.string(),
+    categoria: z.string(),
+    descricao: z.string(),
+    imagem: z.string(),
+    creditos: z
+      .array(z.object({ papel: z.string(), nome: z.string() }))
+      .default([]),
+    ordem: z.coerce.number().default(99),
+  }),
+});
+
+export const collections = { manuais, fotos, projetos };

@@ -103,6 +103,36 @@ collections:
       - { name: data, label: 'Data', widget: datetime, required: false, picker_utc: false, format: 'YYYY-MM-DD', date_format: 'YYYY-MM-DD', time_format: false }
 
   # ============================================================
+  # PROJETOS — "Projetos selecionados" (home e /experiencia)
+  # ============================================================
+  - name: projetos
+    label: 'Projetos selecionados'
+    label_singular: 'Projeto'
+    description: 'Cards de projetos exibidos na página inicial e em /experiencia.'
+    folder: 'src/content/projetos'
+    media_folder: '../../../public/img'
+    public_folder: '/img'
+    create: true
+    slug: '{{slug}}'
+    summary: '{{titulo}} — {{categoria}}'
+    sortable_fields: ['ordem', 'titulo', 'categoria']
+    fields:
+      - { name: titulo, label: 'Título', widget: string }
+      - { name: categoria, label: 'Categoria', widget: string, hint: 'Ex.: Automação industrial, Manutenção industrial, Elétrica industrial' }
+      - { name: descricao, label: 'Descrição', widget: text }
+      - { name: imagem, label: 'Imagem', widget: image, media_library: { config: { multiple: false } } }
+      - name: creditos
+        label: 'Créditos'
+        label_singular: 'Crédito'
+        widget: list
+        required: false
+        summary: '{{fields.papel}}: {{fields.nome}}'
+        fields:
+          - { name: papel, label: 'Papel', widget: string, hint: 'Ex.: Projeto, Desenhista, Montador' }
+          - { name: nome, label: 'Nome', widget: string }
+      - { name: ordem, label: 'Ordem', widget: number, value_type: int, default: 99, hint: 'Menor número aparece primeiro' }
+
+  # ============================================================
   # DADOS DO SITE — config global (one-off file collection)
   # ============================================================
   - name: configuracoes

@@ -1,5 +1,9 @@
 ---
-import { trabalhos } from '../data/site';
+import { getCollection } from 'astro:content';
+
+const trabalhos = (await getCollection('projetos'))
+  .map((p) => p.data)
+  .sort((a, b) => a.ordem - b.ordem || a.titulo.localeCompare(b.titulo));
 ---
 
 <section class="section featured">

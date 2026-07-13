@@ -63,7 +63,7 @@ const fabricantes = [
             data-fabricante={m.data.fabricante ?? ''}
           >
             <a href={m.data.pdf} target="_blank" rel="noopener" class="manual">
-              <div class="manual-icon" aria-hidden="true">
+              <div class="manual-icon" aria-hidden="true" data-pdf={m.data.pdf}>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
                   <path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" />
                   <path d="M14 3v6h6" />
@@ -181,6 +181,8 @@ const fabricantes = [
     box-shadow: var(--shadow-md);
   }
   .manual-icon {
+    position: relative;
+    overflow: hidden;
     background: var(--ink);
     color: var(--accent);
     border-radius: var(--radius);
@@ -192,6 +194,26 @@ const fabricantes = [
     padding: var(--space-3);
   }
   .manual-icon svg { width: 1.8rem; height: 1.8rem; }
+  /* capa do manual (1ª página do PDF, renderizada no navegador) */
+  .manual-icon img.thumb {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: top;
+    background: #fff;
+  }
+  .manual-icon.has-thumb svg { display: none; }
+  .manual-icon.has-thumb .pdf-tag {
+    position: absolute;
+    right: 0.3rem;
+    bottom: 0.3rem;
+    background: var(--ink);
+    color: var(--accent);
+    padding: 0.1rem 0.4rem;
+    border-radius: 4px;
+  }
   .pdf-tag {
     font-family: var(--font-mono);
     font-size: 0.65rem;
@@ -275,4 +297,93 @@ const fabricantes = [
   q?.addEventListener('input', apply);
   cat?.addEventListener('change', apply);
   fab?.addEventListener('change', apply);
+</script>
+
+<script>
+  // Capa dos manuais: renderiza a 1ª página de cada PDF com o pdf.js quando o
+  // card entra na tela, e guarda a miniatura no localStorage para as próximas
+  // visitas. Se algo falhar (PDF corrompido, rede), o ícone padrão permanece.
+  import * as pdfjs from 'pdfjs-dist';
+  import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
+
+  pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
+
+  const CACHE_PREFIX = 'manual-thumb:';
+  const alvos = Array.from(
+    document.querySelectorAll<HTMLElement>('.manual-icon[data-pdf]'),
+  );
+
+  function mostrar(el: HTMLElement, src: string) {
+    const img = document.createElement('img');
+    img.src = src;
+    img.alt = '';
+    img.className = 'thumb';
+    img.decoding = 'async';
+    el.prepend(img);
+    el.classList.add('has-thumb');
+  }
+
+  async function gerarCapa(el: HTMLElement) {
+    const url = el.dataset.pdf!;
+    const chave = CACHE_PREFIX + url;
+    try {
+      const cache = localStorage.getItem(chave);
+      if (cache) {
+        mostrar(el, cache);
+        return;
+      }
+    } catch {}
+
+    // disableAutoFetch: baixa só os trechos necessários da 1ª página
+    const doc = await pdfjs.getDocument({ url, disableAutoFetch: true }).promise;
+    try {
+      const pagina = await doc.getPage(1);
+      const base = pagina.getViewport({ scale: 1 });
+      const escala = 192 / base.width; // ~6rem de largura em tela retina
+      const viewport = pagina.getViewport({ scale: escala });
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.ceil(viewport.width);
+      canvas.height = Math.ceil(viewport.height);
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+      await pagina.render({ canvasContext: ctx, viewport }).promise;
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.75);
+      mostrar(el, dataUrl);
+      try {
+        localStorage.setItem(chave, dataUrl);
+      } catch {}
+    } finally {
+      doc.destroy();
+    }
+  }
+
+  // fila de 1 por vez para não saturar rede/CPU com 20+ PDFs
+  const fila: HTMLElement[] = [];
+  let rodando = false;
+  async function processar() {
+    if (rodando) return;
+    rodando = true;
+    while (fila.length) {
+      const el = fila.shift()!;
+      try {
+        await gerarCapa(el);
+      } catch {}
+    }
+    rodando = false;
+  }
+
+  const io = new IntersectionObserver(
+    (entradas) => {
+      for (const e of entradas) {
+        if (e.isIntersecting) {
+          io.unobserve(e.target);
+          fila.push(e.target as HTMLElement);
+          processar();
+        }
+      }
+    },
+    { rootMargin: '200px' },
+  );
+
+  alvos.forEach((el) => io.observe(el));
 </script>

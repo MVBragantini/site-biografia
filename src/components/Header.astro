@@ -45,6 +45,9 @@ const path = Astro.url.pathname.replace(/\/$/, '') || '/';
             </li>
           );
         })}
+        <li id="nav-admin" hidden>
+          <a href="/admin/" class="nav-link admin-link">Admin</a>
+        </li>
       </ul>
     </nav>
   </div>
@@ -132,6 +135,15 @@ const path = Astro.url.pathname.replace(/\/$/, '') || '/';
     color: var(--ink);
     background: var(--surface);
     box-shadow: inset 0 0 0 1px var(--border);
+  }
+  .admin-link {
+    color: var(--accent);
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+  }
+  .admin-link::before {
+    content: '⚙';
+    margin-right: 0.35rem;
   }
   .nav-link.active::before {
     content: '';
@@ -234,4 +246,18 @@ const path = Astro.url.pathname.replace(/\/$/, '') || '/';
       toggle?.setAttribute('aria-expanded', 'false');
     }),
   );
+
+  // Mostra o link Admin apenas quando há sessão do Decap CMS salva neste
+  // navegador (o CMS guarda o usuário/token no localStorage após o login).
+  try {
+    const logado = [
+      'decap-cms-user',
+      'decap-cms.user',
+      'netlify-cms-user',
+      'netlify-cms.user',
+    ].some((k) => !!localStorage.getItem(k));
+    if (logado) document.querySelector('#nav-admin')?.removeAttribute('hidden');
+  } catch {
+    /* localStorage bloqueado — link fica oculto */
+  }
 </script>

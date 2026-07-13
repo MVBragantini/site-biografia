@@ -43,33 +43,5 @@ export const skills = [
   { name: 'Montagem de painéis', level: 'Avançado', detail: 'Elétrica, desenhos, montagem' },
 ] as const;
 
-export const trabalhos = [
-  {
-    titulo: 'Auto-atendimento de gás',
-    categoria: 'Automação industrial',
-    descricao:
-      'Projeto de automação industrial para auto-atendimento de gás. Participei desde o conceito, passando pelos desenhos e pela montagem.',
-    imagem: '/img/auto-atendimento-gas.jpg',
-    creditos: [
-      { papel: 'Projeto', nome: 'Bernardo Almeida' },
-      { papel: 'Desenhista', nome: 'Marcus Bragantini' },
-      { papel: 'Montador', nome: 'Marcus Bragantini' },
-    ],
-  },
-  {
-    titulo: 'Reparo de inversor',
-    categoria: 'Manutenção industrial',
-    descricao:
-      'Diagnóstico e reparo de inversor de frequência danificado, devolvendo o equipamento à operação plena.',
-    imagem: '/img/inversor-reparado.jpg',
-    creditos: [{ papel: 'Manutenção', nome: 'Marcus Bragantini' }],
-  },
-  {
-    titulo: 'Montagem de painéis elétricos',
-    categoria: 'Elétrica industrial',
-    descricao:
-      'Da leitura do diagrama elétrico à montagem física do painel: cabeamento, identificação, comissionamento.',
-    imagem: '/img/montagem-painel.jpg',
-    creditos: [{ papel: 'Execução', nome: 'Marcus Bragantini' }],
-  },
-];
+// "Projetos selecionados" agora é uma collection do CMS: src/content/projetos
+// (editável em /admin, seção "Projetos selecionados").

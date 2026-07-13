@@ -1,6 +1,11 @@
 ---
+import { getCollection } from 'astro:content';
 import Base from '../layouts/Base.astro';
-import { trabalhos, site } from '../data/site';
+import { site } from '../data/site';
+
+const trabalhos = (await getCollection('projetos'))
+  .map((p) => p.data)
+  .sort((a, b) => a.ordem - b.ordem || a.titulo.localeCompare(b.titulo));
 
 const experiencias = [
   {
