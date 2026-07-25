@@ -1,0 +1,271 @@
+---
+import Base from '../../layouts/Base.astro';
+import { site } from '../../data/site';
+---
+
+<Base title={`Área restrita — ${site.name}`} noindex={true}>
+  <section class="section">
+    <div class="container">
+      <header class="header">
+        <span class="eyebrow">/becape/restrito</span>
+        <h1>Área restrita <span aria-hidden="true">🔒</span></h1>
+        <p class="lead">
+          Seus arquivos privados — textos e imagens — acessíveis de qualquer lugar,
+          protegidos por senha.
+        </p>
+      </header>
+
+      <!-- estado de carregamento -->
+      <p id="rz-loading" class="rz-muted">Carregando…</p>
+
+      <!-- LOGIN -->
+      <div id="rz-login" class="rz-panel" hidden>
+        <form id="rz-login-form" autocomplete="off">
+          <label for="rz-pass">Senha</label>
+          <input id="rz-pass" type="password" inputmode="text" autocomplete="current-password"
+                 placeholder="Digite a senha" required />
+          <button type="submit" class="rz-btn rz-btn-primary">Entrar</button>
+          <p id="rz-login-error" class="rz-err" role="alert" hidden></p>
+        </form>
+      </div>
+
+      <!-- APP -->
+      <div id="rz-app" hidden>
+        <div class="rz-toolbar">
+          <label class="rz-btn rz-btn-primary rz-upload">
+            <input id="rz-file" type="file" multiple hidden
+                   accept=".txt,.md,.csv,.log,.json,.yml,.yaml,.rtf,.pdf,image/*" />
+            <span>＋ Enviar arquivos</span>
+          </label>
+          <span class="rz-hint">texto, imagem ou PDF · até 25&nbsp;MB cada</span>
+          <button id="rz-logout" class="rz-btn rz-link">Sair</button>
+        </div>
+
+        <div id="rz-uploads"></div>
+
+        <p id="rz-empty" class="rz-muted" hidden>Nenhum arquivo ainda. Envie o primeiro acima. ↑</p>
+        <div id="rz-files" class="rz-grid"></div>
+      </div>
+    </div>
+  </section>
+</Base>
+
+<script is:inline>
+  (function () {
+    const $ = (id) => document.getElementById(id);
+    const api = (p, opts) => fetch('/api/restrito' + p, Object.assign({ credentials: 'same-origin' }, opts));
+
+    const elLoading = $('rz-loading');
+    const elLogin = $('rz-login');
+    const elApp = $('rz-app');
+    const elFiles = $('rz-files');
+    const elEmpty = $('rz-empty');
+    const elUploads = $('rz-uploads');
+
+    function show(view) {
+      elLoading.hidden = view !== 'loading';
+      elLogin.hidden = view !== 'login';
+      elApp.hidden = view !== 'app';
+    }
+    function fmtSize(b) {
+      if (b < 1024) return b + ' B';
+      if (b < 1048576) return (b / 1024).toFixed(1) + ' KB';
+      return (b / 1048576).toFixed(1) + ' MB';
+    }
+    function fmtDate(ms) {
+      try { return new Date(ms).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }); }
+      catch { return ''; }
+    }
+    function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+    async function loadFiles() {
+      const r = await api('/list');
+      if (r.status === 401) { show('login'); return; }
+      const { files } = await r.json();
+      elFiles.innerHTML = '';
+      elEmpty.hidden = files.length > 0;
+      for (const f of files) {
+        const url = '/api/restrito/file/' + encodeURIComponent(f.name);
+        const card = document.createElement('div');
+        card.className = 'rz-card';
+        const thumb = f.kind === 'image'
+          ? `<a href="${url}" target="_blank" rel="noopener" class="rz-thumb"><img src="${url}" alt="" loading="lazy" /></a>`
+          : `<a href="${url}" target="_blank" rel="noopener" class="rz-thumb rz-thumb-icon">${f.kind === 'pdf' ? 'PDF' : 'TXT'}</a>`;
+        card.innerHTML =
+          thumb +
+          `<div class="rz-meta">
+             <a href="${url}" target="_blank" rel="noopener" class="rz-name" title="${esc(f.name)}">${esc(f.name)}</a>
+             <span class="rz-sub">${fmtSize(f.size)} · ${fmtDate(f.mtime)}</span>
+           </div>
+           <button class="rz-del" data-name="${esc(f.name)}" title="Apagar" aria-label="Apagar">🗑</button>`;
+        elFiles.appendChild(card);
+      }
+      elFiles.querySelectorAll('.rz-del').forEach((b) => b.addEventListener('click', onDelete));
+    }
+
+    async function onDelete(e) {
+      const name = e.currentTarget.getAttribute('data-name');
+      if (!confirm('Apagar "' + name + '"? Isso não tem como desfazer.')) return;
+      const r = await api('/delete', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name }),
+      });
+      if (r.ok) loadFiles();
+      else alert('Não consegui apagar.');
+    }
+
+    async function uploadOne(file) {
+      const row = document.createElement('div');
+      row.className = 'rz-up';
+      row.textContent = 'Enviando ' + file.name + '…';
+      elUploads.appendChild(row);
+      try {
+        const r = await api('/upload?name=' + encodeURIComponent(file.name), {
+          method: 'POST',
+          headers: { 'Content-Type': file.type || 'application/octet-stream' },
+          body: file,
+        });
+        const d = await r.json().catch(() => ({}));
+        if (r.ok) { row.className = 'rz-up ok'; row.textContent = '✓ ' + (d.name || file.name); }
+        else { row.className = 'rz-up err'; row.textContent = '✗ ' + file.name + ' — ' + (d.error || r.status); }
+      } catch (err) {
+        row.className = 'rz-up err'; row.textContent = '✗ ' + file.name + ' — falha de rede';
+      }
+      setTimeout(() => row.remove(), 4000);
+    }
+
+    async function onFiles(e) {
+      const files = Array.from(e.target.files || []);
+      e.target.value = '';
+      for (const f of files) await uploadOne(f);
+      loadFiles();
+    }
+
+    // login
+    $('rz-login-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const errEl = $('rz-login-error');
+      errEl.hidden = true;
+      const password = $('rz-pass').value;
+      const r = await api('/login', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password }),
+      });
+      if (r.ok) { $('rz-pass').value = ''; show('app'); loadFiles(); }
+      else {
+        const d = await r.json().catch(() => ({}));
+        errEl.textContent = d.error || 'Não foi possível entrar.';
+        errEl.hidden = false;
+      }
+    });
+
+    $('rz-logout').addEventListener('click', async () => {
+      await api('/logout', { method: 'POST' });
+      show('login');
+    });
+    $('rz-file').addEventListener('change', onFiles);
+
+    // boot
+    (async () => {
+      try {
+        const r = await api('/session');
+        const { authed } = await r.json();
+        if (authed) { show('app'); loadFiles(); } else { show('login'); }
+      } catch { show('login'); }
+    })();
+  })();
+</script>
+
+<style>
+  .header { max-width: 40rem; margin-bottom: var(--space-6); }
+  .header h1 { font-size: var(--step-5); margin-block: var(--space-3) var(--space-4); }
+  .rz-muted { color: var(--ink-soft); }
+
+  .rz-panel {
+    max-width: 24rem;
+    padding: var(--space-6);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+  }
+  #rz-login-form { display: flex; flex-direction: column; gap: var(--space-3); }
+  #rz-login-form label {
+    font-family: var(--font-mono); font-size: var(--step--1);
+    text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-soft);
+  }
+  #rz-pass {
+    padding: 0.7rem 0.9rem; border: 1px solid var(--border);
+    border-radius: var(--radius); background: var(--bg); width: 100%;
+  }
+  #rz-pass:focus { outline: 2px solid var(--accent); outline-offset: 1px; border-color: var(--accent); }
+
+  .rz-btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem;
+    padding: 0.6rem 1rem; border-radius: var(--radius); font-weight: 500;
+    cursor: pointer; transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+  }
+  .rz-btn-primary { background: var(--ink); color: var(--surface); }
+  .rz-btn-primary:hover { background: var(--accent); }
+  .rz-link { color: var(--ink-soft); }
+  .rz-link:hover { color: var(--accent); }
+  .rz-upload { position: relative; }
+
+  .rz-toolbar {
+    display: flex; align-items: center; gap: var(--space-4);
+    flex-wrap: wrap; margin-bottom: var(--space-5);
+  }
+  .rz-hint { font-family: var(--font-mono); font-size: 0.72rem; color: var(--ink-muted); }
+  .rz-toolbar .rz-link { margin-left: auto; }
+
+  #rz-uploads { display: flex; flex-direction: column; gap: 0.3rem; margin-bottom: var(--space-4); }
+  .rz-up {
+    font-family: var(--font-mono); font-size: 0.78rem; color: var(--ink-soft);
+    padding: 0.4rem 0.7rem; background: var(--surface-2); border-radius: var(--radius);
+  }
+  .rz-up.ok { color: var(--success); }
+  .rz-up.err { color: var(--danger); }
+
+  .rz-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+    gap: var(--space-4);
+  }
+  .rz-card {
+    display: flex; flex-direction: column; position: relative;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); overflow: hidden;
+    transition: border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
+  }
+  .rz-card:hover { border-color: var(--ink-2); box-shadow: var(--shadow-md); }
+  .rz-thumb {
+    display: block; aspect-ratio: 4 / 3; background: var(--surface-2);
+    overflow: hidden;
+  }
+  .rz-thumb img { width: 100%; height: 100%; object-fit: cover; }
+  .rz-thumb-icon {
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-mono); font-weight: 600; letter-spacing: 0.1em;
+    color: var(--ink-soft); font-size: var(--step-2);
+  }
+  .rz-meta { display: flex; flex-direction: column; gap: 0.15rem; padding: var(--space-3); }
+  .rz-name {
+    font-weight: 500; color: var(--ink); font-size: var(--step--1);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .rz-name:hover { color: var(--accent); }
+  .rz-sub { font-family: var(--font-mono); font-size: 0.68rem; color: var(--ink-muted); }
+  .rz-del {
+    position: absolute; top: 0.4rem; right: 0.4rem;
+    width: 1.9rem; height: 1.9rem; border-radius: var(--radius);
+    background: rgba(255, 255, 255, 0.9); font-size: 0.9rem; line-height: 1;
+    opacity: 0; transition: opacity var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
+  }
+  .rz-card:hover .rz-del { opacity: 1; }
+  .rz-del:hover { background: var(--accent-soft); }
+
+  .rz-err { color: var(--danger); font-size: var(--step--1); }
+
+  @media (max-width: 480px) {
+    .rz-del { opacity: 1; }
+  }
+</style>

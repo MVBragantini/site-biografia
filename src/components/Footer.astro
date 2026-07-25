@@ -32,9 +32,27 @@ const year = new Date().getFullYear();
 
   <div class="container foot-bottom">
     <span>© {year} {site.name}</span>
+    <span class="foot-views" hidden aria-label="Visitas ao site" title="Visitas ao site">
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>
+      <span id="bv-views">—</span>
+    </span>
     <span class="foot-meta">{site.location}</span>
   </div>
 </footer>
+
+<script is:inline>
+  fetch('/api/views', { credentials: 'same-origin' })
+    .then((r) => (r.ok ? r.json() : null))
+    .then((d) => {
+      if (!d || typeof d.total !== 'number') return;
+      const el = document.getElementById('bv-views');
+      const wrap = document.querySelector('.foot-views');
+      if (!el || !wrap) return;
+      el.textContent = d.total.toLocaleString('pt-BR');
+      wrap.hidden = false;
+    })
+    .catch(() => {});
+</script>
 
 <style>
   .site-footer {
@@ -74,12 +92,25 @@ const year = new Date().getFullYear();
   .foot-col a:hover { color: var(--accent); }
   .foot-bottom {
     display: flex;
+    align-items: center;
     justify-content: space-between;
+    gap: var(--space-3);
     padding-top: var(--space-5);
     border-top: 1px solid var(--border);
     color: var(--ink-muted);
     font-family: var(--font-mono);
     font-size: 0.78rem;
+  }
+  .foot-views {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    color: var(--ink-soft);
+  }
+  .foot-views svg { opacity: 0.8; }
+  .foot-meta { margin-left: auto; }
+  @media (max-width: 480px) {
+    .foot-bottom { flex-wrap: wrap; }
   }
   @media (max-width: 640px) {
     .footer-grid { grid-template-columns: 1fr; }

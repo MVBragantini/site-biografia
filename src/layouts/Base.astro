@@ -8,12 +8,14 @@ interface Props {
   title?: string;
   description?: string;
   ogImage?: string;
+  noindex?: boolean;
 }
 
 const {
   title = `${site.name} — ${site.role}`,
   description = site.shortBio,
   ogImage = '/img/marcus.jpg',
+  noindex = false,
 } = Astro.props;
 
 const canonical = new URL(Astro.url.pathname, Astro.site).toString();
@@ -29,6 +31,7 @@ const canonical = new URL(Astro.url.pathname, Astro.site).toString();
 
     <title>{title}</title>
     <meta name="description" content={description} />
+    {noindex && <meta name="robots" content="noindex, nofollow" />}
     <link rel="canonical" href={canonical} />
 
     <!-- Open Graph -->
