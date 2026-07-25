@@ -1,5 +1,5 @@
 ---
-nome: Inversor CFW700
+nome: Inversor CFW 700
 fabricante: "WEG "
 categoria: Inversor de frequência
 pdf: https://static.weg.net/medias/downloadcenter/h86/hf9/WEG-10000796176-CFW700-manual-programacao-pt.pdf
