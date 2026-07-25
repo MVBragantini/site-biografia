@@ -2,6 +2,7 @@
 
 Status:
 
+- 🚧 Migração para VPS própria em andamento (teste em https://bio-teste.bragantini.com.br) — 2026-07-25
 - ✅ Site no ar (preview): https://bragantini.vercel.app
 - ✅ Repo conectado ao GitHub: cada push para `main` faz redeploy automático
 - ⏳ Domínio `bragantini.com.br` registrado na Vercel, aguardando DNS apontar
