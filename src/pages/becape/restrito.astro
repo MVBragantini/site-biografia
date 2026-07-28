@@ -4,6 +4,7 @@ import { site } from '../../data/site';
 ---
 
 <Base title={`Anotações — ${site.name}`} noindex={true}>
+  <link rel="stylesheet" href="/vendor/quill/quill.snow.css" />
   <section class="section">
     <div class="container">
       <p id="rz-loading" class="rz-muted">Carregando…</p>
@@ -31,6 +32,11 @@ import { site } from '../../data/site';
             <button id="rz-logout" class="rz-btn rz-link">Sair</button>
           </div>
         </div>
+        <div id="rz-sort" class="rz-sort" hidden>
+          <span>Ordenar:</span>
+          <button data-sort="updated" class="rz-sort-btn on">recentes</button>
+          <button data-sort="title" class="rz-sort-btn">título</button>
+        </div>
         <p id="rz-empty" class="rz-muted" hidden>Nenhuma anotação ainda. Toque em <b>＋ Nova</b> para começar.</p>
         <div id="rz-cards" class="rz-cards"></div>
       </div>
@@ -45,226 +51,136 @@ import { site } from '../../data/site';
           </div>
         </div>
         <textarea id="rz-note-title" class="rz-note-title" rows="1" placeholder="Título da anotação"></textarea>
-        <div id="rz-blocks" class="rz-blocks"></div>
-        <div class="rz-add">
-          <button id="rz-add-btn" class="rz-add-btn">＋ Adicionar bloco</button>
-          <div id="rz-add-menu" class="rz-add-menu" hidden>
-            <button data-type="text">📝 Texto</button>
-            <button data-type="heading">🔤 Título de seção</button>
-            <button data-type="todo">☑ Checklist</button>
-            <button data-type="list">• Lista</button>
-            <button data-type="image">🖼 Imagem</button>
-          </div>
-        </div>
+        <div id="rz-quill"></div>
       </div>
     </div>
   </section>
 </Base>
 
-<input id="rz-img-input" type="file" accept="image/*" hidden />
-
+<script is:inline src="/vendor/quill/quill.js"></script>
 <script is:inline>
   (function () {
     const $ = (id) => document.getElementById(id);
     const api = (p, opts) => fetch('/api/restrito' + p, Object.assign({ credentials: 'same-origin' }, opts));
     const V = { loading: $('rz-loading'), login: $('rz-login'), list: $('rz-list'), editor: $('rz-editor') };
     function show(v) { for (const k in V) V[k].hidden = k !== v; }
+    function fmtDate(ms) { try { return new Date(ms).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' }); } catch { return ''; } }
+    function autoGrow(el) { el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px'; }
 
-    function fmtDate(ms) {
-      try { return new Date(ms).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' }); }
-      catch { return ''; }
-    }
-    function autoGrow(el) { el.style.height = 'auto'; el.style.height = (el.scrollHeight) + 'px'; }
-
-    /* ---------------- LISTA ---------------- */
+    /* ---------- LISTA ---------- */
+    let allNotas = [], sortBy = 'updated';
     async function loadList() {
       const r = await api('/notas');
       if (r.status === 401) { show('login'); return; }
-      const { notas } = await r.json();
+      allNotas = (await r.json()).notas || [];
+      renderList();
+      show('list');
+    }
+    function renderList() {
       const box = $('rz-cards'); box.innerHTML = '';
-      $('rz-empty').hidden = notas.length > 0;
-      for (const n of notas) {
-        const card = document.createElement('button');
-        card.className = 'rz-note-card';
-        const title = document.createElement('span'); title.className = 'rz-nc-title'; title.textContent = n.title || 'Sem título';
-        const snip = document.createElement('span'); snip.className = 'rz-nc-snip'; snip.textContent = n.snippet || '';
-        const date = document.createElement('span'); date.className = 'rz-nc-date'; date.textContent = fmtDate(n.updated);
-        card.append(title, snip, date);
+      $('rz-empty').hidden = allNotas.length > 0;
+      $('rz-sort').hidden = allNotas.length < 2;
+      const arr = allNotas.slice().sort((a, b) =>
+        sortBy === 'title' ? (a.title || '').localeCompare(b.title || '', 'pt') : (b.updated - a.updated));
+      for (const n of arr) {
+        const card = document.createElement('button'); card.className = 'rz-note-card';
+        const t = document.createElement('span'); t.className = 'rz-nc-title'; t.textContent = n.title || 'Sem título';
+        const s = document.createElement('span'); s.className = 'rz-nc-snip'; s.textContent = n.snippet || '';
+        const d = document.createElement('span'); d.className = 'rz-nc-date'; d.textContent = fmtDate(n.updated);
+        card.append(t, s, d);
         card.addEventListener('click', () => openEditor(n.id));
         box.appendChild(card);
       }
-      show('list');
+    }
+    $('rz-sort').querySelectorAll('.rz-sort-btn').forEach((b) =>
+      b.addEventListener('click', () => {
+        sortBy = b.dataset.sort;
+        $('rz-sort').querySelectorAll('.rz-sort-btn').forEach((x) => x.classList.toggle('on', x === b));
+        renderList();
+      }));
+
+    /* ---------- EDITOR (Quill) ---------- */
+    let quill = null, state = { id: null, title: '' };
+    let saving = false, pendingSave = false, saveTimer = null, loadingNote = false;
+
+    function ensureQuill() {
+      if (quill) return;
+      quill = new Quill('#rz-quill', {
+        theme: 'snow',
+        placeholder: 'Escreva sua anotação…',
+        modules: {
+          toolbar: {
+            container: [
+              [{ header: [1, 2, 3, false] }],
+              ['bold', 'italic', 'underline', 'strike'],
+              [{ color: [] }, { background: [] }],
+              [{ list: 'ordered' }, { list: 'bullet' }, { list: 'check' }],
+              [{ align: [] }],
+              ['link', 'image'],
+              ['clean'],
+            ],
+            handlers: { image: imageHandler },
+          },
+        },
+      });
+      quill.on('text-change', (d, o, source) => { if (source === 'user' && !loadingNote) scheduleSave(); });
     }
 
-    /* ---------------- EDITOR ---------------- */
-    let state = { id: null, title: '', blocks: [] };
-    let saving = false, pending = false, saveTimer = null, imgTargetBlock = null;
+    function imageHandler() {
+      const input = document.createElement('input'); input.type = 'file'; input.accept = 'image/*';
+      input.onchange = async () => {
+        const file = input.files && input.files[0]; if (!file) return;
+        const range = quill.getSelection(true);
+        setStatus('enviando imagem…');
+        try {
+          const r = await api('/nota-img?name=' + encodeURIComponent(file.name), { method: 'POST', headers: { 'Content-Type': file.type || 'image/jpeg' }, body: file });
+          const d = await r.json().catch(() => ({}));
+          if (r.ok && d.url) { quill.insertEmbed(range.index, 'image', d.url, 'user'); quill.setSelection(range.index + 1, 0); }
+          else setStatus('erro: ' + (d.error || 'upload'));
+        } catch { setStatus('falha no upload'); }
+      };
+      input.click();
+    }
 
     function setStatus(t) { $('rz-status').textContent = t; }
     function scheduleSave() { setStatus('editando…'); clearTimeout(saveTimer); saveTimer = setTimeout(saveNote, 900); }
     async function saveNote() {
-      if (saving) { pending = true; return; }
+      if (saving) { pendingSave = true; return; }
       saving = true; setStatus('salvando…');
+      const payload = { id: state.id, title: state.title, content: quill.getContents(), text: quill.getText() };
       try {
-        const r = await api('/nota', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(state) });
+        const r = await api('/nota', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
         if (r.ok) { const n = await r.json(); state.id = n.id; setStatus('salvo ✓'); }
         else setStatus('erro ao salvar');
       } catch { setStatus('sem conexão'); }
       saving = false;
-      if (pending) { pending = false; saveNote(); }
+      if (pendingSave) { pendingSave = false; saveNote(); }
     }
 
     async function openEditor(id) {
+      ensureQuill();
+      loadingNote = true;
       if (id) {
         const r = await api('/nota/' + encodeURIComponent(id));
-        if (!r.ok) { alert('Não consegui abrir a nota.'); return; }
-        state = await r.json();
+        if (!r.ok) { loadingNote = false; alert('Não consegui abrir a nota.'); return; }
+        const n = await r.json();
+        state = { id: n.id, title: n.title || '' };
+        if (n.content && n.content.ops) quill.setContents(n.content); else quill.setText('');
       } else {
-        state = { id: null, title: '', blocks: [{ type: 'text', text: '' }] };
+        state = { id: null, title: '' };
+        quill.setText('');
       }
-      $('rz-note-title').value = state.title || '';
-      renderBlocks();
+      $('rz-note-title').value = state.title;
       setStatus(state.id ? 'salvo ✓' : '');
       show('editor');
       autoGrow($('rz-note-title'));
+      loadingNote = false;
       if (!id) $('rz-note-title').focus();
     }
 
-    function renderBlocks() {
-      const box = $('rz-blocks'); box.innerHTML = '';
-      state.blocks.forEach((b, i) => box.appendChild(blockEl(b, i)));
-    }
-
-    function blockEl(b, i) {
-      const wrap = document.createElement('div'); wrap.className = 'rz-block';
-
-      const ctrls = document.createElement('div'); ctrls.className = 'rz-bctrl';
-      ctrls.appendChild(iconBtn('↑', 'Subir', () => moveBlock(i, -1)));
-      ctrls.appendChild(iconBtn('↓', 'Descer', () => moveBlock(i, 1)));
-      ctrls.appendChild(iconBtn('🗑', 'Remover bloco', () => { state.blocks.splice(i, 1); renderBlocks(); scheduleSave(); }));
-
-      const body = document.createElement('div'); body.className = 'rz-bbody';
-
-      if (b.type === 'heading' || b.type === 'text') {
-        const ta = document.createElement('textarea');
-        ta.className = b.type === 'heading' ? 'rz-b-heading' : 'rz-b-text';
-        ta.rows = 1; ta.value = b.text || '';
-        ta.placeholder = b.type === 'heading' ? 'Título de seção' : 'Escreva aqui…';
-        ta.addEventListener('input', () => { b.text = ta.value; autoGrow(ta); scheduleSave(); });
-        body.appendChild(ta);
-        setTimeout(() => autoGrow(ta), 0);
-      } else if (b.type === 'todo') {
-        b.items = b.items || [];
-        const ul = document.createElement('div'); ul.className = 'rz-items';
-        b.items.forEach((it, j) => ul.appendChild(todoRow(b, it, i, j)));
-        body.appendChild(ul);
-        body.appendChild(addItemBtn('＋ item', () => { b.items.push({ text: '', done: false }); renderBlocks(); focusLastItem(i); scheduleSave(); }));
-      } else if (b.type === 'list') {
-        b.items = b.items || [];
-        const head = document.createElement('div'); head.className = 'rz-list-head';
-        const tgl = document.createElement('button'); tgl.className = 'rz-mini';
-        tgl.textContent = b.ordered ? '1. numerada' : '• marcadores';
-        tgl.addEventListener('click', () => { b.ordered = !b.ordered; renderBlocks(); scheduleSave(); });
-        head.appendChild(tgl); body.appendChild(head);
-        const ul = document.createElement('div'); ul.className = 'rz-items';
-        b.items.forEach((txt, j) => ul.appendChild(listRow(b, i, j)));
-        body.appendChild(ul);
-        body.appendChild(addItemBtn('＋ item', () => { b.items.push(''); renderBlocks(); focusLastItem(i); scheduleSave(); }));
-      } else if (b.type === 'image') {
-        if (b.file) {
-          const img = document.createElement('img'); img.className = 'rz-b-img'; img.src = b.file; img.alt = b.caption || '';
-          body.appendChild(img);
-          const cap = document.createElement('input'); cap.className = 'rz-b-cap'; cap.value = b.caption || ''; cap.placeholder = 'Legenda (opcional)';
-          cap.addEventListener('input', () => { b.caption = cap.value; scheduleSave(); });
-          body.appendChild(cap);
-        } else {
-          const pick = document.createElement('button'); pick.className = 'rz-pick';
-          pick.textContent = '🖼 Escolher imagem';
-          pick.addEventListener('click', () => { imgTargetBlock = b; $('rz-img-input').click(); });
-          body.appendChild(pick);
-        }
-      }
-
-      wrap.append(body, ctrls);
-      return wrap;
-    }
-
-    function todoRow(b, it, i, j) {
-      const row = document.createElement('div'); row.className = 'rz-item rz-todo' + (it.done ? ' done' : '');
-      const cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = !!it.done;
-      cb.addEventListener('change', () => { it.done = cb.checked; row.classList.toggle('done', it.done); scheduleSave(); });
-      const inp = document.createElement('input'); inp.className = 'rz-item-inp'; inp.value = it.text || ''; inp.placeholder = 'Item';
-      inp.addEventListener('input', () => { it.text = inp.value; scheduleSave(); });
-      itemKeys(inp, b, i, j, () => b.items.push({ text: '', done: false }));
-      const del = iconBtn('×', 'Remover item', () => { b.items.splice(j, 1); renderBlocks(); scheduleSave(); });
-      row.append(cb, inp, del);
-      return row;
-    }
-    function listRow(b, i, j) {
-      const row = document.createElement('div'); row.className = 'rz-item';
-      const mark = document.createElement('span'); mark.className = 'rz-mark'; mark.textContent = b.ordered ? (j + 1) + '.' : '•';
-      const inp = document.createElement('input'); inp.className = 'rz-item-inp'; inp.value = b.items[j] || ''; inp.placeholder = 'Item';
-      inp.addEventListener('input', () => { b.items[j] = inp.value; scheduleSave(); });
-      itemKeys(inp, b, i, j, () => b.items.push(''));
-      const del = iconBtn('×', 'Remover item', () => { b.items.splice(j, 1); renderBlocks(); scheduleSave(); });
-      row.append(mark, inp, del);
-      return row;
-    }
-    function itemKeys(inp, b, i, j, addFn) {
-      inp.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') { e.preventDefault(); addFn(); renderBlocks(); focusLastItem(i); scheduleSave(); }
-        else if (e.key === 'Backspace' && inp.value === '' && b.items.length > 1) {
-          e.preventDefault(); b.items.splice(j, 1); renderBlocks(); focusItem(i, Math.max(0, j - 1)); scheduleSave();
-        }
-      });
-    }
-    function focusLastItem(i) { const items = itemsOf(i); if (items.length) items[items.length - 1].focus(); }
-    function focusItem(i, j) { const items = itemsOf(i); if (items[j]) items[j].focus(); }
-    function itemsOf(i) { const blocks = $('rz-blocks').children; return blocks[i] ? blocks[i].querySelectorAll('.rz-item-inp') : []; }
-
-    function iconBtn(txt, label, fn) {
-      const b = document.createElement('button'); b.className = 'rz-icon'; b.textContent = txt; b.setAttribute('aria-label', label); b.title = label;
-      b.addEventListener('click', fn); return b;
-    }
-    function addItemBtn(txt, fn) { const b = document.createElement('button'); b.className = 'rz-additem'; b.textContent = txt; b.addEventListener('click', fn); return b; }
-
-    function moveBlock(i, dir) {
-      const j = i + dir; if (j < 0 || j >= state.blocks.length) return;
-      const t = state.blocks[i]; state.blocks[i] = state.blocks[j]; state.blocks[j] = t;
-      renderBlocks(); scheduleSave();
-    }
-    function addBlock(type) {
-      const nb = type === 'todo' ? { type, items: [{ text: '', done: false }] }
-        : type === 'list' ? { type, ordered: false, items: [''] }
-        : type === 'image' ? { type, file: '', caption: '' }
-        : { type, text: '' };
-      state.blocks.push(nb); renderBlocks(); scheduleSave();
-      if (type === 'image') { imgTargetBlock = nb; $('rz-img-input').click(); }
-      else { const items = itemsOf(state.blocks.length - 1); if (items.length) items[0].focus(); }
-    }
-
-    /* imagem */
-    $('rz-img-input').addEventListener('change', async (e) => {
-      const file = e.target.files && e.target.files[0]; e.target.value = '';
-      if (!file || !imgTargetBlock) return;
-      const b = imgTargetBlock; imgTargetBlock = null;
-      setStatus('enviando imagem…');
-      try {
-        const r = await api('/nota-img?name=' + encodeURIComponent(file.name), { method: 'POST', headers: { 'Content-Type': file.type || 'image/jpeg' }, body: file });
-        const d = await r.json().catch(() => ({}));
-        if (r.ok && d.url) { b.file = d.url; renderBlocks(); scheduleSave(); }
-        else setStatus('erro: ' + (d.error || 'upload'));
-      } catch { setStatus('falha no upload'); }
-    });
-
-    /* título + toolbar */
     $('rz-note-title').addEventListener('input', (e) => { state.title = e.target.value; autoGrow(e.target); scheduleSave(); });
-    $('rz-add-btn').addEventListener('click', () => { $('rz-add-menu').hidden = !$('rz-add-menu').hidden; });
-    $('rz-add-menu').querySelectorAll('button').forEach((btn) =>
-      btn.addEventListener('click', () => { $('rz-add-menu').hidden = true; addBlock(btn.dataset.type); }));
-
-    $('rz-back').addEventListener('click', async () => { clearTimeout(saveTimer); await saveNote(); loadList(); });
     $('rz-new').addEventListener('click', () => openEditor(null));
+    $('rz-back').addEventListener('click', async () => { clearTimeout(saveTimer); await saveNote(); loadList(); });
     $('rz-del').addEventListener('click', async () => {
       if (!confirm('Excluir esta anotação? Não dá pra desfazer.')) return;
       if (state.id) await api('/nota/delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: state.id }) });
@@ -272,7 +188,7 @@ import { site } from '../../data/site';
     });
     $('rz-logout').addEventListener('click', async () => { await api('/logout', { method: 'POST' }); show('login'); });
 
-    /* login */
+    /* ---------- LOGIN ---------- */
     $('rz-login-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       const err = $('rz-login-error'); err.hidden = true;
@@ -281,9 +197,9 @@ import { site } from '../../data/site';
       else { const d = await r.json().catch(() => ({})); err.textContent = d.error || 'Não foi possível entrar.'; err.hidden = false; }
     });
 
-    /* boot */
+    /* ---------- BOOT ---------- */
     (async () => {
-      try { const r = await api('/session'); const { authed } = await r.json(); authed ? loadList() : show('login'); }
+      try { const r = await api('/session'); (await r.json()).authed ? loadList() : show('login'); }
       catch { show('login'); }
     })();
   })();
@@ -294,14 +210,12 @@ import { site } from '../../data/site';
   .rz-head { margin-bottom: var(--space-5); }
   .rz-head h1 { font-size: var(--step-4); margin-top: var(--space-2); }
 
-  /* login */
   .rz-panel { max-width: 24rem; padding: var(--space-6); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); }
   #rz-login-form { display: flex; flex-direction: column; gap: var(--space-3); }
   #rz-login-form label { font-family: var(--font-mono); font-size: var(--step--1); text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-soft); }
   #rz-pass { padding: 0.7rem 0.9rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg); font-size: 1rem; }
   #rz-pass:focus { outline: 2px solid var(--accent); outline-offset: 1px; border-color: var(--accent); }
 
-  /* botões */
   .rz-btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; padding: 0.55rem 0.95rem; border-radius: var(--radius); font-weight: 500; cursor: pointer; transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease); }
   .rz-btn-primary { background: var(--ink); color: var(--surface); }
   .rz-btn-primary:hover { background: var(--accent); }
@@ -309,13 +223,15 @@ import { site } from '../../data/site';
   .rz-link:hover { color: var(--accent); }
   .rz-danger:hover { color: var(--danger); }
 
-  /* topbar */
-  .rz-topbar { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); margin-bottom: var(--space-5); flex-wrap: wrap; }
+  .rz-topbar { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); margin-bottom: var(--space-4); flex-wrap: wrap; }
   .rz-topbar .rz-title { font-size: var(--step-4); }
   .rz-topbar-actions { display: flex; align-items: center; gap: var(--space-3); }
-  .rz-status { font-family: var(--font-mono); font-size: 0.72rem; color: var(--ink-muted); min-width: 4.5rem; text-align: right; }
+  .rz-status { font-family: var(--font-mono); font-size: 0.72rem; color: var(--ink-muted); min-width: 5rem; text-align: right; }
 
-  /* lista de notas */
+  .rz-sort { display: flex; align-items: center; gap: 0.5rem; margin-bottom: var(--space-4); font-family: var(--font-mono); font-size: 0.72rem; color: var(--ink-muted); }
+  .rz-sort-btn { padding: 0.2rem 0.6rem; border: 1px solid var(--border); border-radius: var(--radius-full); color: var(--ink-soft); }
+  .rz-sort-btn.on { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+
   .rz-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); gap: var(--space-4); }
   .rz-note-card { display: flex; flex-direction: column; gap: 0.35rem; text-align: left; padding: var(--space-4); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); transition: border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease), transform var(--dur) var(--ease); }
   .rz-note-card:hover { border-color: var(--ink-2); box-shadow: var(--shadow-md); transform: translateY(-2px); }
@@ -323,55 +239,27 @@ import { site } from '../../data/site';
   .rz-nc-snip { color: var(--ink-2); font-size: var(--step--1); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   .rz-nc-date { font-family: var(--font-mono); font-size: 0.68rem; color: var(--ink-muted); margin-top: auto; }
 
-  /* editor */
-  .rz-note-title { width: 100%; border: 0; background: transparent; resize: none; overflow: hidden; font-family: var(--font-display); font-weight: 700; font-size: var(--step-4); line-height: 1.15; color: var(--ink); margin-bottom: var(--space-4); }
+  .rz-note-title { width: 100%; border: 0; background: transparent; resize: none; overflow: hidden; font-family: var(--font-display); font-weight: 700; font-size: var(--step-4); line-height: 1.15; color: var(--ink); margin-bottom: var(--space-3); }
   .rz-note-title:focus { outline: none; }
-
-  .rz-blocks { display: flex; flex-direction: column; gap: var(--space-2); }
-  .rz-block { display: flex; gap: var(--space-2); align-items: flex-start; padding: 0.35rem; border-radius: var(--radius); border: 1px solid transparent; }
-  .rz-block:focus-within { border-color: var(--border); background: var(--surface); }
-  .rz-bbody { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.4rem; }
-  .rz-bctrl { display: flex; flex-direction: column; gap: 0.15rem; opacity: 0.5; transition: opacity var(--dur-fast) var(--ease); }
-  .rz-block:focus-within .rz-bctrl, .rz-block:hover .rz-bctrl { opacity: 1; }
-
-  .rz-b-text, .rz-b-heading { width: 100%; border: 0; background: transparent; resize: none; overflow: hidden; color: var(--ink); font-size: 1rem; line-height: 1.55; }
-  .rz-b-text:focus, .rz-b-heading:focus { outline: none; }
-  .rz-b-heading { font-family: var(--font-display); font-weight: 700; font-size: var(--step-2); }
-
-  .rz-items { display: flex; flex-direction: column; gap: 0.25rem; }
-  .rz-item { display: flex; align-items: center; gap: 0.5rem; }
-  .rz-item-inp { flex: 1; min-width: 0; border: 0; background: transparent; color: var(--ink); font-size: 1rem; padding: 0.15rem 0; }
-  .rz-item-inp:focus { outline: none; }
-  .rz-todo input[type=checkbox] { width: 1.15rem; height: 1.15rem; accent-color: var(--accent); flex: none; }
-  .rz-todo.done .rz-item-inp { text-decoration: line-through; color: var(--ink-muted); }
-  .rz-mark { font-family: var(--font-mono); color: var(--ink-soft); min-width: 1.3rem; text-align: right; font-size: 0.9rem; }
-  .rz-list-head { margin-bottom: 0.2rem; }
-  .rz-mini { font-family: var(--font-mono); font-size: 0.7rem; color: var(--ink-soft); padding: 0.15rem 0.5rem; border: 1px solid var(--border); border-radius: var(--radius-full); }
-  .rz-mini:hover { color: var(--accent); border-color: var(--accent); }
-  .rz-additem { align-self: flex-start; font-family: var(--font-mono); font-size: 0.75rem; color: var(--ink-soft); padding: 0.2rem 0; }
-  .rz-additem:hover { color: var(--accent); }
-
-  .rz-b-img { width: 100%; border-radius: var(--radius); border: 1px solid var(--border); }
-  .rz-b-cap { border: 0; background: transparent; color: var(--ink-soft); font-size: var(--step--1); text-align: center; }
-  .rz-b-cap:focus { outline: none; }
-  .rz-pick { align-self: flex-start; padding: 0.6rem 1rem; border: 1px dashed var(--border); border-radius: var(--radius); color: var(--ink-soft); font-family: var(--font-mono); font-size: 0.8rem; }
-  .rz-pick:hover { border-color: var(--accent); color: var(--accent); }
-
-  .rz-icon { width: 1.7rem; height: 1.7rem; display: inline-flex; align-items: center; justify-content: center; border-radius: var(--radius); color: var(--ink-soft); font-size: 0.9rem; }
-  .rz-icon:hover { background: var(--surface-2); color: var(--accent); }
-
-  /* adicionar bloco */
-  .rz-add { margin-top: var(--space-4); }
-  .rz-add-btn { width: 100%; padding: 0.7rem; border: 1px dashed var(--border); border-radius: var(--radius); color: var(--ink-soft); font-family: var(--font-mono); font-size: 0.85rem; }
-  .rz-add-btn:hover { border-color: var(--accent); color: var(--accent); }
-  .rz-add-menu { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: var(--space-3); }
-  .rz-add-menu button { padding: 0.5rem 0.9rem; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-full); font-size: 0.85rem; color: var(--ink-2); }
-  .rz-add-menu button:hover { border-color: var(--accent); color: var(--accent); }
-
   .rz-err { color: var(--danger); font-size: var(--step--1); }
+
+  /* Quill integrado ao tema do site */
+  #rz-quill { background: var(--surface); border-radius: 0 0 var(--radius-lg) var(--radius-lg); }
+  .ql-toolbar.ql-snow { border-color: var(--border); border-radius: var(--radius-lg) var(--radius-lg) 0 0; background: var(--surface-2); position: sticky; top: 0; z-index: 5; }
+  .ql-container.ql-snow { border-color: var(--border); border-radius: 0 0 var(--radius-lg) var(--radius-lg); font-family: var(--font-sans); }
+  .ql-editor { min-height: 55vh; font-size: 1rem; line-height: 1.6; color: var(--ink); }
+  .ql-editor.ql-blank::before { color: var(--ink-muted); font-style: normal; }
+  .ql-snow .ql-stroke { stroke: var(--ink-2); }
+  .ql-snow .ql-fill { fill: var(--ink-2); }
+  .ql-snow .ql-picker { color: var(--ink-2); }
+  .ql-snow.ql-toolbar button:hover .ql-stroke, .ql-snow .ql-toolbar button:hover .ql-stroke { stroke: var(--accent); }
+  .ql-snow.ql-toolbar button.ql-active .ql-stroke { stroke: var(--accent); }
+  .ql-snow.ql-toolbar button.ql-active .ql-fill { fill: var(--accent); }
+  .ql-editor img { border-radius: var(--radius); }
 
   @media (max-width: 640px) {
     .rz-cards { grid-template-columns: 1fr; }
     .rz-note-title { font-size: var(--step-3); }
+    .ql-editor { min-height: 60vh; }
   }
 </style>
