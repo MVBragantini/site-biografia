@@ -47,11 +47,35 @@ import { site } from '../../data/site';
           <button id="rz-back" class="rz-btn rz-link">← Anotações</button>
           <div class="rz-topbar-actions">
             <span id="rz-status" class="rz-status"></span>
+            <button id="rz-share" class="rz-btn rz-link">Compartilhar</button>
             <button id="rz-del" class="rz-btn rz-link rz-danger">Excluir</button>
           </div>
         </div>
+
+        <div id="rz-share-panel" class="rz-share-panel" hidden>
+          <div class="rz-share-row">
+            <input id="rz-share-url" type="text" readonly onclick="this.select()" />
+            <button id="rz-share-copy" class="rz-btn rz-btn-primary">Copiar</button>
+          </div>
+          <div class="rz-share-foot">
+            <span class="rz-muted">🌐 Qualquer pessoa com o link vê esta nota (somente leitura).</span>
+            <button id="rz-share-stop" class="rz-btn rz-link rz-danger">Parar de compartilhar</button>
+          </div>
+        </div>
+
         <textarea id="rz-note-title" class="rz-note-title" rows="1" placeholder="Título da anotação"></textarea>
         <div id="rz-quill"></div>
+
+        <div id="rz-table-tools" class="rz-table-tools">
+          <button data-act="insert" class="rz-tt-btn">▦ Inserir tabela</button>
+          <span id="rz-tt-when" hidden>
+            <button data-act="rowBelow" class="rz-tt-btn">+ linha</button>
+            <button data-act="colRight" class="rz-tt-btn">+ coluna</button>
+            <button data-act="delRow" class="rz-tt-btn">− linha</button>
+            <button data-act="delCol" class="rz-tt-btn">− coluna</button>
+            <button data-act="delTable" class="rz-tt-btn rz-danger">excluir tabela</button>
+          </span>
+        </div>
       </div>
     </div>
   </section>
@@ -109,6 +133,7 @@ import { site } from '../../data/site';
         theme: 'snow',
         placeholder: 'Escreva sua anotação…',
         modules: {
+          table: true,
           toolbar: {
             container: [
               [{ header: [1, 2, 3, false] }],
@@ -124,7 +149,28 @@ import { site } from '../../data/site';
         },
       });
       quill.on('text-change', (d, o, source) => { if (source === 'user' && !loadingNote) scheduleSave(); });
+      quill.on('selection-change', (range) => {
+        let inTable = false;
+        if (range) { try { inTable = !!quill.getModule('table').getTable(range)[0]; } catch (e) {} }
+        $('rz-tt-when').hidden = !inTable;
+      });
     }
+
+    // controles de tabela
+    $('rz-table-tools').addEventListener('click', (e) => {
+      const b = e.target.closest('button'); if (!b || !quill) return;
+      const t = quill.getModule('table'); const act = b.dataset.act;
+      quill.focus(); quill.getSelection(true);
+      try {
+        if (act === 'insert') t.insertTable(3, 3);
+        else if (act === 'rowBelow') t.insertRowBelow();
+        else if (act === 'colRight') t.insertColumnRight();
+        else if (act === 'delRow') t.deleteRow();
+        else if (act === 'delCol') t.deleteColumn();
+        else if (act === 'delTable') t.deleteTable();
+      } catch (err) {}
+      scheduleSave();
+    });
 
     function imageHandler() {
       const input = document.createElement('input'); input.type = 'file'; input.accept = 'image/*';
@@ -164,19 +210,58 @@ import { site } from '../../data/site';
         const r = await api('/nota/' + encodeURIComponent(id));
         if (!r.ok) { loadingNote = false; alert('Não consegui abrir a nota.'); return; }
         const n = await r.json();
-        state = { id: n.id, title: n.title || '' };
+        state = { id: n.id, title: n.title || '', share: n.share || null };
         if (n.content && n.content.ops) quill.setContents(n.content); else quill.setText('');
       } else {
-        state = { id: null, title: '' };
+        state = { id: null, title: '', share: null };
         quill.setText('');
       }
       $('rz-note-title').value = state.title;
       setStatus(state.id ? 'salvo ✓' : '');
+      $('rz-share-panel').hidden = true;
+      updateShareUI();
       show('editor');
       autoGrow($('rz-note-title'));
       loadingNote = false;
       if (!id) $('rz-note-title').focus();
     }
+
+    /* ---------- COMPARTILHAR ---------- */
+    function shareUrl(token) { return location.origin + '/becape/nota?n=' + token; }
+    function updateShareUI() {
+      const on = !!(state.share && state.share.enabled && state.share.token);
+      $('rz-share').textContent = on ? '🌐 Compartilhada' : 'Compartilhar';
+      $('rz-share').classList.toggle('rz-on', on);
+      if (on) $('rz-share-url').value = shareUrl(state.share.token);
+    }
+    async function setShare(enabled) {
+      if (!state.id) { await saveNote(); }
+      if (!state.id) return null;
+      const r = await api('/nota/share', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: state.id, enabled }) });
+      if (!r.ok) return null;
+      const d = await r.json();
+      state.share = { enabled: d.enabled, token: d.token };
+      updateShareUI();
+      return d;
+    }
+    $('rz-share').addEventListener('click', async () => {
+      const panel = $('rz-share-panel');
+      if (state.share && state.share.enabled) { panel.hidden = !panel.hidden; return; }
+      setStatus('gerando link…');
+      const d = await setShare(true);
+      setStatus(state.id ? 'salvo ✓' : '');
+      if (d) panel.hidden = false;
+    });
+    $('rz-share-copy').addEventListener('click', async () => {
+      const url = $('rz-share-url').value;
+      try { await navigator.clipboard.writeText(url); }
+      catch { $('rz-share-url').select(); try { document.execCommand('copy'); } catch (e) {} }
+      const b = $('rz-share-copy'); b.textContent = 'Copiado!'; setTimeout(() => (b.textContent = 'Copiar'), 1500);
+    });
+    $('rz-share-stop').addEventListener('click', async () => {
+      await setShare(false);
+      $('rz-share-panel').hidden = true;
+    });
 
     $('rz-note-title').addEventListener('input', (e) => { state.title = e.target.value; autoGrow(e.target); scheduleSave(); });
     $('rz-new').addEventListener('click', () => openEditor(null));
@@ -256,6 +341,20 @@ import { site } from '../../data/site';
   .ql-snow.ql-toolbar button.ql-active .ql-stroke { stroke: var(--accent); }
   .ql-snow.ql-toolbar button.ql-active .ql-fill { fill: var(--accent); }
   .ql-editor img { border-radius: var(--radius); }
+  .ql-editor table { border-collapse: collapse; width: 100%; margin: 0.6rem 0; }
+  .ql-editor td { border: 1px solid var(--border); padding: 0.4rem 0.55rem; min-width: 2.5rem; vertical-align: top; }
+
+  #rz-share.rz-on { color: var(--success); }
+  .rz-share-panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: var(--space-3); margin-bottom: var(--space-4); display: flex; flex-direction: column; gap: var(--space-2); }
+  .rz-share-row { display: flex; gap: var(--space-2); }
+  #rz-share-url { flex: 1; min-width: 0; padding: 0.5rem 0.7rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg); font-family: var(--font-mono); font-size: 0.78rem; color: var(--ink-2); }
+  .rz-share-foot { display: flex; justify-content: space-between; align-items: center; gap: var(--space-3); flex-wrap: wrap; font-size: var(--step--1); }
+
+  .rz-table-tools { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: var(--space-3); }
+  #rz-tt-when { display: inline-flex; flex-wrap: wrap; gap: 0.4rem; }
+  .rz-tt-btn { font-family: var(--font-mono); font-size: 0.72rem; color: var(--ink-soft); padding: 0.3rem 0.6rem; border: 1px solid var(--border); border-radius: var(--radius-full); }
+  .rz-tt-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .rz-tt-btn.rz-danger:hover { border-color: var(--danger); color: var(--danger); }
 
   @media (max-width: 640px) {
     .rz-cards { grid-template-columns: 1fr; }

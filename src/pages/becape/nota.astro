@@ -1,0 +1,66 @@
+---
+import Base from '../../layouts/Base.astro';
+import { site } from '../../data/site';
+---
+
+<Base title={`Anotação — ${site.name}`} noindex={true}>
+  <link rel="stylesheet" href="/vendor/quill/quill.snow.css" />
+  <section class="section">
+    <div class="container pb-wrap">
+      <p id="pb-loading" class="pb-muted">Carregando…</p>
+
+      <article id="pb-note" hidden>
+        <h1 id="pb-title" class="pb-title"></h1>
+        <div id="pb-content"></div>
+        <p id="pb-foot" class="pb-foot"></p>
+      </article>
+
+      <div id="pb-error" class="pb-panel" hidden>
+        <h1>Nota indisponível</h1>
+        <p class="pb-muted">Esta anotação não existe ou não está mais sendo compartilhada.</p>
+        <a href="/" class="pb-btn">Ir para o site</a>
+      </div>
+    </div>
+  </section>
+</Base>
+
+<script is:inline src="/vendor/quill/quill.js"></script>
+<script is:inline>
+  (function () {
+    const token = (new URLSearchParams(location.search).get('n') || location.hash.replace('#', '')).trim();
+    const loading = document.getElementById('pb-loading');
+    const noteEl = document.getElementById('pb-note');
+    const errEl = document.getElementById('pb-error');
+    const fail = () => { loading.hidden = true; errEl.hidden = false; };
+    if (!token) return fail();
+
+    fetch('/api/share/' + encodeURIComponent(token), { credentials: 'omit' })
+      .then((r) => { if (!r.ok) throw 0; return r.json(); })
+      .then((d) => {
+        document.getElementById('pb-title').textContent = d.title || 'Sem título';
+        const q = new Quill('#pb-content', { readOnly: true, modules: { toolbar: false, table: true } });
+        if (d.content && d.content.ops) q.setContents(d.content);
+        if (d.updated) document.getElementById('pb-foot').textContent = 'Atualizada em ' + new Date(d.updated).toLocaleString('pt-BR');
+        loading.hidden = true; noteEl.hidden = false;
+      })
+      .catch(fail);
+  })();
+</script>
+
+<style is:global>
+  .pb-wrap { max-width: 46rem; }
+  .pb-muted { color: var(--ink-soft); }
+  .pb-title { font-size: var(--step-5); margin-bottom: var(--space-4); }
+  .pb-foot { margin-top: var(--space-5); padding-top: var(--space-4); border-top: 1px solid var(--border); font-family: var(--font-mono); font-size: 0.72rem; color: var(--ink-muted); }
+  .pb-panel { max-width: 30rem; padding: var(--space-6); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); }
+  .pb-panel h1 { font-size: var(--step-3); margin-bottom: var(--space-3); }
+  .pb-btn { display: inline-block; margin-top: var(--space-4); padding: 0.55rem 1rem; background: var(--ink); color: var(--surface); border-radius: var(--radius); font-weight: 500; }
+  .pb-btn:hover { background: var(--accent); }
+
+  /* Quill read-only: sem bordas de caixa, leitura limpa */
+  #pb-content.ql-container.ql-snow { border: 0; font-family: var(--font-sans); font-size: 1.05rem; }
+  #pb-content .ql-editor { padding: 0; line-height: 1.7; color: var(--ink); }
+  #pb-content .ql-editor img { border-radius: var(--radius); }
+  #pb-content .ql-editor table { border-collapse: collapse; width: 100%; margin: 0.6rem 0; }
+  #pb-content .ql-editor td { border: 1px solid var(--border); padding: 0.4rem 0.55rem; vertical-align: top; }
+</style>
