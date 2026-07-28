@@ -3,269 +3,375 @@ import Base from '../../layouts/Base.astro';
 import { site } from '../../data/site';
 ---
 
-<Base title={`Área restrita — ${site.name}`} noindex={true}>
+<Base title={`Anotações — ${site.name}`} noindex={true}>
   <section class="section">
     <div class="container">
-      <header class="header">
-        <span class="eyebrow">/becape/restrito</span>
-        <h1>Área restrita <span aria-hidden="true">🔒</span></h1>
-        <p class="lead">
-          Seus arquivos privados — textos e imagens — acessíveis de qualquer lugar,
-          protegidos por senha.
-        </p>
-      </header>
-
-      <!-- estado de carregamento -->
       <p id="rz-loading" class="rz-muted">Carregando…</p>
 
       <!-- LOGIN -->
       <div id="rz-login" class="rz-panel" hidden>
+        <header class="rz-head">
+          <span class="eyebrow">/becape/restrito</span>
+          <h1>Anotações <span aria-hidden="true">🔒</span></h1>
+        </header>
         <form id="rz-login-form" autocomplete="off">
           <label for="rz-pass">Senha</label>
-          <input id="rz-pass" type="password" inputmode="text" autocomplete="current-password"
-                 placeholder="Digite a senha" required />
+          <input id="rz-pass" type="password" autocomplete="current-password" placeholder="Digite a senha" required />
           <button type="submit" class="rz-btn rz-btn-primary">Entrar</button>
           <p id="rz-login-error" class="rz-err" role="alert" hidden></p>
         </form>
       </div>
 
-      <!-- APP -->
-      <div id="rz-app" hidden>
-        <div class="rz-toolbar">
-          <label class="rz-btn rz-btn-primary rz-upload">
-            <input id="rz-file" type="file" multiple hidden
-                   accept=".txt,.md,.csv,.log,.json,.yml,.yaml,.rtf,.pdf,image/*" />
-            <span>＋ Enviar arquivos</span>
-          </label>
-          <span class="rz-hint">texto, imagem ou PDF · até 25&nbsp;MB cada</span>
-          <button id="rz-logout" class="rz-btn rz-link">Sair</button>
+      <!-- LISTA -->
+      <div id="rz-list" hidden>
+        <div class="rz-topbar">
+          <h1 class="rz-title">Anotações</h1>
+          <div class="rz-topbar-actions">
+            <button id="rz-new" class="rz-btn rz-btn-primary">＋ Nova</button>
+            <button id="rz-logout" class="rz-btn rz-link">Sair</button>
+          </div>
         </div>
+        <p id="rz-empty" class="rz-muted" hidden>Nenhuma anotação ainda. Toque em <b>＋ Nova</b> para começar.</p>
+        <div id="rz-cards" class="rz-cards"></div>
+      </div>
 
-        <div id="rz-uploads"></div>
-
-        <p id="rz-empty" class="rz-muted" hidden>Nenhum arquivo ainda. Envie o primeiro acima. ↑</p>
-        <div id="rz-files" class="rz-grid"></div>
+      <!-- EDITOR -->
+      <div id="rz-editor" hidden>
+        <div class="rz-topbar">
+          <button id="rz-back" class="rz-btn rz-link">← Anotações</button>
+          <div class="rz-topbar-actions">
+            <span id="rz-status" class="rz-status"></span>
+            <button id="rz-del" class="rz-btn rz-link rz-danger">Excluir</button>
+          </div>
+        </div>
+        <textarea id="rz-note-title" class="rz-note-title" rows="1" placeholder="Título da anotação"></textarea>
+        <div id="rz-blocks" class="rz-blocks"></div>
+        <div class="rz-add">
+          <button id="rz-add-btn" class="rz-add-btn">＋ Adicionar bloco</button>
+          <div id="rz-add-menu" class="rz-add-menu" hidden>
+            <button data-type="text">📝 Texto</button>
+            <button data-type="heading">🔤 Título de seção</button>
+            <button data-type="todo">☑ Checklist</button>
+            <button data-type="list">• Lista</button>
+            <button data-type="image">🖼 Imagem</button>
+          </div>
+        </div>
       </div>
     </div>
   </section>
 </Base>
 
+<input id="rz-img-input" type="file" accept="image/*" hidden />
+
 <script is:inline>
   (function () {
     const $ = (id) => document.getElementById(id);
     const api = (p, opts) => fetch('/api/restrito' + p, Object.assign({ credentials: 'same-origin' }, opts));
+    const V = { loading: $('rz-loading'), login: $('rz-login'), list: $('rz-list'), editor: $('rz-editor') };
+    function show(v) { for (const k in V) V[k].hidden = k !== v; }
 
-    const elLoading = $('rz-loading');
-    const elLogin = $('rz-login');
-    const elApp = $('rz-app');
-    const elFiles = $('rz-files');
-    const elEmpty = $('rz-empty');
-    const elUploads = $('rz-uploads');
-
-    function show(view) {
-      elLoading.hidden = view !== 'loading';
-      elLogin.hidden = view !== 'login';
-      elApp.hidden = view !== 'app';
-    }
-    function fmtSize(b) {
-      if (b < 1024) return b + ' B';
-      if (b < 1048576) return (b / 1024).toFixed(1) + ' KB';
-      return (b / 1048576).toFixed(1) + ' MB';
-    }
     function fmtDate(ms) {
-      try { return new Date(ms).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }); }
+      try { return new Date(ms).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' }); }
       catch { return ''; }
     }
-    function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+    function autoGrow(el) { el.style.height = 'auto'; el.style.height = (el.scrollHeight) + 'px'; }
 
-    async function loadFiles() {
-      const r = await api('/list');
+    /* ---------------- LISTA ---------------- */
+    async function loadList() {
+      const r = await api('/notas');
       if (r.status === 401) { show('login'); return; }
-      const { files } = await r.json();
-      elFiles.innerHTML = '';
-      elEmpty.hidden = files.length > 0;
-      for (const f of files) {
-        const url = '/api/restrito/file/' + encodeURIComponent(f.name);
-        const card = document.createElement('div');
-        card.className = 'rz-card';
-        const thumb = f.kind === 'image'
-          ? `<a href="${url}" target="_blank" rel="noopener" class="rz-thumb"><img src="${url}" alt="" loading="lazy" /></a>`
-          : `<a href="${url}" target="_blank" rel="noopener" class="rz-thumb rz-thumb-icon">${f.kind === 'pdf' ? 'PDF' : 'TXT'}</a>`;
-        card.innerHTML =
-          thumb +
-          `<div class="rz-meta">
-             <a href="${url}" target="_blank" rel="noopener" class="rz-name" title="${esc(f.name)}">${esc(f.name)}</a>
-             <span class="rz-sub">${fmtSize(f.size)} · ${fmtDate(f.mtime)}</span>
-           </div>
-           <button class="rz-del" data-name="${esc(f.name)}" title="Apagar" aria-label="Apagar">🗑</button>`;
-        elFiles.appendChild(card);
+      const { notas } = await r.json();
+      const box = $('rz-cards'); box.innerHTML = '';
+      $('rz-empty').hidden = notas.length > 0;
+      for (const n of notas) {
+        const card = document.createElement('button');
+        card.className = 'rz-note-card';
+        const title = document.createElement('span'); title.className = 'rz-nc-title'; title.textContent = n.title || 'Sem título';
+        const snip = document.createElement('span'); snip.className = 'rz-nc-snip'; snip.textContent = n.snippet || '';
+        const date = document.createElement('span'); date.className = 'rz-nc-date'; date.textContent = fmtDate(n.updated);
+        card.append(title, snip, date);
+        card.addEventListener('click', () => openEditor(n.id));
+        box.appendChild(card);
       }
-      elFiles.querySelectorAll('.rz-del').forEach((b) => b.addEventListener('click', onDelete));
+      show('list');
     }
 
-    async function onDelete(e) {
-      const name = e.currentTarget.getAttribute('data-name');
-      if (!confirm('Apagar "' + name + '"? Isso não tem como desfazer.')) return;
-      const r = await api('/delete', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name }),
-      });
-      if (r.ok) loadFiles();
-      else alert('Não consegui apagar.');
-    }
+    /* ---------------- EDITOR ---------------- */
+    let state = { id: null, title: '', blocks: [] };
+    let saving = false, pending = false, saveTimer = null, imgTargetBlock = null;
 
-    async function uploadOne(file) {
-      const row = document.createElement('div');
-      row.className = 'rz-up';
-      row.textContent = 'Enviando ' + file.name + '…';
-      elUploads.appendChild(row);
+    function setStatus(t) { $('rz-status').textContent = t; }
+    function scheduleSave() { setStatus('editando…'); clearTimeout(saveTimer); saveTimer = setTimeout(saveNote, 900); }
+    async function saveNote() {
+      if (saving) { pending = true; return; }
+      saving = true; setStatus('salvando…');
       try {
-        const r = await api('/upload?name=' + encodeURIComponent(file.name), {
-          method: 'POST',
-          headers: { 'Content-Type': file.type || 'application/octet-stream' },
-          body: file,
-        });
-        const d = await r.json().catch(() => ({}));
-        if (r.ok) { row.className = 'rz-up ok'; row.textContent = '✓ ' + (d.name || file.name); }
-        else { row.className = 'rz-up err'; row.textContent = '✗ ' + file.name + ' — ' + (d.error || r.status); }
-      } catch (err) {
-        row.className = 'rz-up err'; row.textContent = '✗ ' + file.name + ' — falha de rede';
+        const r = await api('/nota', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(state) });
+        if (r.ok) { const n = await r.json(); state.id = n.id; setStatus('salvo ✓'); }
+        else setStatus('erro ao salvar');
+      } catch { setStatus('sem conexão'); }
+      saving = false;
+      if (pending) { pending = false; saveNote(); }
+    }
+
+    async function openEditor(id) {
+      if (id) {
+        const r = await api('/nota/' + encodeURIComponent(id));
+        if (!r.ok) { alert('Não consegui abrir a nota.'); return; }
+        state = await r.json();
+      } else {
+        state = { id: null, title: '', blocks: [{ type: 'text', text: '' }] };
       }
-      setTimeout(() => row.remove(), 4000);
+      $('rz-note-title').value = state.title || '';
+      renderBlocks();
+      setStatus(state.id ? 'salvo ✓' : '');
+      show('editor');
+      autoGrow($('rz-note-title'));
+      if (!id) $('rz-note-title').focus();
     }
 
-    async function onFiles(e) {
-      const files = Array.from(e.target.files || []);
-      e.target.value = '';
-      for (const f of files) await uploadOne(f);
-      loadFiles();
+    function renderBlocks() {
+      const box = $('rz-blocks'); box.innerHTML = '';
+      state.blocks.forEach((b, i) => box.appendChild(blockEl(b, i)));
     }
 
-    // login
+    function blockEl(b, i) {
+      const wrap = document.createElement('div'); wrap.className = 'rz-block';
+
+      const ctrls = document.createElement('div'); ctrls.className = 'rz-bctrl';
+      ctrls.appendChild(iconBtn('↑', 'Subir', () => moveBlock(i, -1)));
+      ctrls.appendChild(iconBtn('↓', 'Descer', () => moveBlock(i, 1)));
+      ctrls.appendChild(iconBtn('🗑', 'Remover bloco', () => { state.blocks.splice(i, 1); renderBlocks(); scheduleSave(); }));
+
+      const body = document.createElement('div'); body.className = 'rz-bbody';
+
+      if (b.type === 'heading' || b.type === 'text') {
+        const ta = document.createElement('textarea');
+        ta.className = b.type === 'heading' ? 'rz-b-heading' : 'rz-b-text';
+        ta.rows = 1; ta.value = b.text || '';
+        ta.placeholder = b.type === 'heading' ? 'Título de seção' : 'Escreva aqui…';
+        ta.addEventListener('input', () => { b.text = ta.value; autoGrow(ta); scheduleSave(); });
+        body.appendChild(ta);
+        setTimeout(() => autoGrow(ta), 0);
+      } else if (b.type === 'todo') {
+        b.items = b.items || [];
+        const ul = document.createElement('div'); ul.className = 'rz-items';
+        b.items.forEach((it, j) => ul.appendChild(todoRow(b, it, i, j)));
+        body.appendChild(ul);
+        body.appendChild(addItemBtn('＋ item', () => { b.items.push({ text: '', done: false }); renderBlocks(); focusLastItem(i); scheduleSave(); }));
+      } else if (b.type === 'list') {
+        b.items = b.items || [];
+        const head = document.createElement('div'); head.className = 'rz-list-head';
+        const tgl = document.createElement('button'); tgl.className = 'rz-mini';
+        tgl.textContent = b.ordered ? '1. numerada' : '• marcadores';
+        tgl.addEventListener('click', () => { b.ordered = !b.ordered; renderBlocks(); scheduleSave(); });
+        head.appendChild(tgl); body.appendChild(head);
+        const ul = document.createElement('div'); ul.className = 'rz-items';
+        b.items.forEach((txt, j) => ul.appendChild(listRow(b, i, j)));
+        body.appendChild(ul);
+        body.appendChild(addItemBtn('＋ item', () => { b.items.push(''); renderBlocks(); focusLastItem(i); scheduleSave(); }));
+      } else if (b.type === 'image') {
+        if (b.file) {
+          const img = document.createElement('img'); img.className = 'rz-b-img'; img.src = b.file; img.alt = b.caption || '';
+          body.appendChild(img);
+          const cap = document.createElement('input'); cap.className = 'rz-b-cap'; cap.value = b.caption || ''; cap.placeholder = 'Legenda (opcional)';
+          cap.addEventListener('input', () => { b.caption = cap.value; scheduleSave(); });
+          body.appendChild(cap);
+        } else {
+          const pick = document.createElement('button'); pick.className = 'rz-pick';
+          pick.textContent = '🖼 Escolher imagem';
+          pick.addEventListener('click', () => { imgTargetBlock = b; $('rz-img-input').click(); });
+          body.appendChild(pick);
+        }
+      }
+
+      wrap.append(body, ctrls);
+      return wrap;
+    }
+
+    function todoRow(b, it, i, j) {
+      const row = document.createElement('div'); row.className = 'rz-item rz-todo' + (it.done ? ' done' : '');
+      const cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = !!it.done;
+      cb.addEventListener('change', () => { it.done = cb.checked; row.classList.toggle('done', it.done); scheduleSave(); });
+      const inp = document.createElement('input'); inp.className = 'rz-item-inp'; inp.value = it.text || ''; inp.placeholder = 'Item';
+      inp.addEventListener('input', () => { it.text = inp.value; scheduleSave(); });
+      itemKeys(inp, b, i, j, () => b.items.push({ text: '', done: false }));
+      const del = iconBtn('×', 'Remover item', () => { b.items.splice(j, 1); renderBlocks(); scheduleSave(); });
+      row.append(cb, inp, del);
+      return row;
+    }
+    function listRow(b, i, j) {
+      const row = document.createElement('div'); row.className = 'rz-item';
+      const mark = document.createElement('span'); mark.className = 'rz-mark'; mark.textContent = b.ordered ? (j + 1) + '.' : '•';
+      const inp = document.createElement('input'); inp.className = 'rz-item-inp'; inp.value = b.items[j] || ''; inp.placeholder = 'Item';
+      inp.addEventListener('input', () => { b.items[j] = inp.value; scheduleSave(); });
+      itemKeys(inp, b, i, j, () => b.items.push(''));
+      const del = iconBtn('×', 'Remover item', () => { b.items.splice(j, 1); renderBlocks(); scheduleSave(); });
+      row.append(mark, inp, del);
+      return row;
+    }
+    function itemKeys(inp, b, i, j, addFn) {
+      inp.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); addFn(); renderBlocks(); focusLastItem(i); scheduleSave(); }
+        else if (e.key === 'Backspace' && inp.value === '' && b.items.length > 1) {
+          e.preventDefault(); b.items.splice(j, 1); renderBlocks(); focusItem(i, Math.max(0, j - 1)); scheduleSave();
+        }
+      });
+    }
+    function focusLastItem(i) { const items = itemsOf(i); if (items.length) items[items.length - 1].focus(); }
+    function focusItem(i, j) { const items = itemsOf(i); if (items[j]) items[j].focus(); }
+    function itemsOf(i) { const blocks = $('rz-blocks').children; return blocks[i] ? blocks[i].querySelectorAll('.rz-item-inp') : []; }
+
+    function iconBtn(txt, label, fn) {
+      const b = document.createElement('button'); b.className = 'rz-icon'; b.textContent = txt; b.setAttribute('aria-label', label); b.title = label;
+      b.addEventListener('click', fn); return b;
+    }
+    function addItemBtn(txt, fn) { const b = document.createElement('button'); b.className = 'rz-additem'; b.textContent = txt; b.addEventListener('click', fn); return b; }
+
+    function moveBlock(i, dir) {
+      const j = i + dir; if (j < 0 || j >= state.blocks.length) return;
+      const t = state.blocks[i]; state.blocks[i] = state.blocks[j]; state.blocks[j] = t;
+      renderBlocks(); scheduleSave();
+    }
+    function addBlock(type) {
+      const nb = type === 'todo' ? { type, items: [{ text: '', done: false }] }
+        : type === 'list' ? { type, ordered: false, items: [''] }
+        : type === 'image' ? { type, file: '', caption: '' }
+        : { type, text: '' };
+      state.blocks.push(nb); renderBlocks(); scheduleSave();
+      if (type === 'image') { imgTargetBlock = nb; $('rz-img-input').click(); }
+      else { const items = itemsOf(state.blocks.length - 1); if (items.length) items[0].focus(); }
+    }
+
+    /* imagem */
+    $('rz-img-input').addEventListener('change', async (e) => {
+      const file = e.target.files && e.target.files[0]; e.target.value = '';
+      if (!file || !imgTargetBlock) return;
+      const b = imgTargetBlock; imgTargetBlock = null;
+      setStatus('enviando imagem…');
+      try {
+        const r = await api('/nota-img?name=' + encodeURIComponent(file.name), { method: 'POST', headers: { 'Content-Type': file.type || 'image/jpeg' }, body: file });
+        const d = await r.json().catch(() => ({}));
+        if (r.ok && d.url) { b.file = d.url; renderBlocks(); scheduleSave(); }
+        else setStatus('erro: ' + (d.error || 'upload'));
+      } catch { setStatus('falha no upload'); }
+    });
+
+    /* título + toolbar */
+    $('rz-note-title').addEventListener('input', (e) => { state.title = e.target.value; autoGrow(e.target); scheduleSave(); });
+    $('rz-add-btn').addEventListener('click', () => { $('rz-add-menu').hidden = !$('rz-add-menu').hidden; });
+    $('rz-add-menu').querySelectorAll('button').forEach((btn) =>
+      btn.addEventListener('click', () => { $('rz-add-menu').hidden = true; addBlock(btn.dataset.type); }));
+
+    $('rz-back').addEventListener('click', async () => { clearTimeout(saveTimer); await saveNote(); loadList(); });
+    $('rz-new').addEventListener('click', () => openEditor(null));
+    $('rz-del').addEventListener('click', async () => {
+      if (!confirm('Excluir esta anotação? Não dá pra desfazer.')) return;
+      if (state.id) await api('/nota/delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: state.id }) });
+      loadList();
+    });
+    $('rz-logout').addEventListener('click', async () => { await api('/logout', { method: 'POST' }); show('login'); });
+
+    /* login */
     $('rz-login-form').addEventListener('submit', async (e) => {
       e.preventDefault();
-      const errEl = $('rz-login-error');
-      errEl.hidden = true;
-      const password = $('rz-pass').value;
-      const r = await api('/login', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password }),
-      });
-      if (r.ok) { $('rz-pass').value = ''; show('app'); loadFiles(); }
-      else {
-        const d = await r.json().catch(() => ({}));
-        errEl.textContent = d.error || 'Não foi possível entrar.';
-        errEl.hidden = false;
-      }
+      const err = $('rz-login-error'); err.hidden = true;
+      const r = await api('/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: $('rz-pass').value }) });
+      if (r.ok) { $('rz-pass').value = ''; loadList(); }
+      else { const d = await r.json().catch(() => ({})); err.textContent = d.error || 'Não foi possível entrar.'; err.hidden = false; }
     });
 
-    $('rz-logout').addEventListener('click', async () => {
-      await api('/logout', { method: 'POST' });
-      show('login');
-    });
-    $('rz-file').addEventListener('change', onFiles);
-
-    // boot
+    /* boot */
     (async () => {
-      try {
-        const r = await api('/session');
-        const { authed } = await r.json();
-        if (authed) { show('app'); loadFiles(); } else { show('login'); }
-      } catch { show('login'); }
+      try { const r = await api('/session'); const { authed } = await r.json(); authed ? loadList() : show('login'); }
+      catch { show('login'); }
     })();
   })();
 </script>
 
 <style>
-  .header { max-width: 40rem; margin-bottom: var(--space-6); }
-  .header h1 { font-size: var(--step-5); margin-block: var(--space-3) var(--space-4); }
   .rz-muted { color: var(--ink-soft); }
+  .rz-head { margin-bottom: var(--space-5); }
+  .rz-head h1 { font-size: var(--step-4); margin-top: var(--space-2); }
 
-  .rz-panel {
-    max-width: 24rem;
-    padding: var(--space-6);
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-sm);
-  }
+  /* login */
+  .rz-panel { max-width: 24rem; padding: var(--space-6); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); }
   #rz-login-form { display: flex; flex-direction: column; gap: var(--space-3); }
-  #rz-login-form label {
-    font-family: var(--font-mono); font-size: var(--step--1);
-    text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-soft);
-  }
-  #rz-pass {
-    padding: 0.7rem 0.9rem; border: 1px solid var(--border);
-    border-radius: var(--radius); background: var(--bg); width: 100%;
-  }
+  #rz-login-form label { font-family: var(--font-mono); font-size: var(--step--1); text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-soft); }
+  #rz-pass { padding: 0.7rem 0.9rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg); font-size: 1rem; }
   #rz-pass:focus { outline: 2px solid var(--accent); outline-offset: 1px; border-color: var(--accent); }
 
-  .rz-btn {
-    display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem;
-    padding: 0.6rem 1rem; border-radius: var(--radius); font-weight: 500;
-    cursor: pointer; transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
-  }
+  /* botões */
+  .rz-btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; padding: 0.55rem 0.95rem; border-radius: var(--radius); font-weight: 500; cursor: pointer; transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease); }
   .rz-btn-primary { background: var(--ink); color: var(--surface); }
   .rz-btn-primary:hover { background: var(--accent); }
   .rz-link { color: var(--ink-soft); }
   .rz-link:hover { color: var(--accent); }
-  .rz-upload { position: relative; }
+  .rz-danger:hover { color: var(--danger); }
 
-  .rz-toolbar {
-    display: flex; align-items: center; gap: var(--space-4);
-    flex-wrap: wrap; margin-bottom: var(--space-5);
-  }
-  .rz-hint { font-family: var(--font-mono); font-size: 0.72rem; color: var(--ink-muted); }
-  .rz-toolbar .rz-link { margin-left: auto; }
+  /* topbar */
+  .rz-topbar { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); margin-bottom: var(--space-5); flex-wrap: wrap; }
+  .rz-topbar .rz-title { font-size: var(--step-4); }
+  .rz-topbar-actions { display: flex; align-items: center; gap: var(--space-3); }
+  .rz-status { font-family: var(--font-mono); font-size: 0.72rem; color: var(--ink-muted); min-width: 4.5rem; text-align: right; }
 
-  #rz-uploads { display: flex; flex-direction: column; gap: 0.3rem; margin-bottom: var(--space-4); }
-  .rz-up {
-    font-family: var(--font-mono); font-size: 0.78rem; color: var(--ink-soft);
-    padding: 0.4rem 0.7rem; background: var(--surface-2); border-radius: var(--radius);
-  }
-  .rz-up.ok { color: var(--success); }
-  .rz-up.err { color: var(--danger); }
+  /* lista de notas */
+  .rz-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); gap: var(--space-4); }
+  .rz-note-card { display: flex; flex-direction: column; gap: 0.35rem; text-align: left; padding: var(--space-4); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); transition: border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease), transform var(--dur) var(--ease); }
+  .rz-note-card:hover { border-color: var(--ink-2); box-shadow: var(--shadow-md); transform: translateY(-2px); }
+  .rz-nc-title { font-family: var(--font-display); font-weight: 700; font-size: var(--step-1); color: var(--ink); }
+  .rz-nc-snip { color: var(--ink-2); font-size: var(--step--1); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .rz-nc-date { font-family: var(--font-mono); font-size: 0.68rem; color: var(--ink-muted); margin-top: auto; }
 
-  .rz-grid {
-    display: grid; grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
-    gap: var(--space-4);
-  }
-  .rz-card {
-    display: flex; flex-direction: column; position: relative;
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: var(--radius-lg); overflow: hidden;
-    transition: border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
-  }
-  .rz-card:hover { border-color: var(--ink-2); box-shadow: var(--shadow-md); }
-  .rz-thumb {
-    display: block; aspect-ratio: 4 / 3; background: var(--surface-2);
-    overflow: hidden;
-  }
-  .rz-thumb img { width: 100%; height: 100%; object-fit: cover; }
-  .rz-thumb-icon {
-    display: flex; align-items: center; justify-content: center;
-    font-family: var(--font-mono); font-weight: 600; letter-spacing: 0.1em;
-    color: var(--ink-soft); font-size: var(--step-2);
-  }
-  .rz-meta { display: flex; flex-direction: column; gap: 0.15rem; padding: var(--space-3); }
-  .rz-name {
-    font-weight: 500; color: var(--ink); font-size: var(--step--1);
-    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  }
-  .rz-name:hover { color: var(--accent); }
-  .rz-sub { font-family: var(--font-mono); font-size: 0.68rem; color: var(--ink-muted); }
-  .rz-del {
-    position: absolute; top: 0.4rem; right: 0.4rem;
-    width: 1.9rem; height: 1.9rem; border-radius: var(--radius);
-    background: rgba(255, 255, 255, 0.9); font-size: 0.9rem; line-height: 1;
-    opacity: 0; transition: opacity var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
-  }
-  .rz-card:hover .rz-del { opacity: 1; }
-  .rz-del:hover { background: var(--accent-soft); }
+  /* editor */
+  .rz-note-title { width: 100%; border: 0; background: transparent; resize: none; overflow: hidden; font-family: var(--font-display); font-weight: 700; font-size: var(--step-4); line-height: 1.15; color: var(--ink); margin-bottom: var(--space-4); }
+  .rz-note-title:focus { outline: none; }
+
+  .rz-blocks { display: flex; flex-direction: column; gap: var(--space-2); }
+  .rz-block { display: flex; gap: var(--space-2); align-items: flex-start; padding: 0.35rem; border-radius: var(--radius); border: 1px solid transparent; }
+  .rz-block:focus-within { border-color: var(--border); background: var(--surface); }
+  .rz-bbody { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.4rem; }
+  .rz-bctrl { display: flex; flex-direction: column; gap: 0.15rem; opacity: 0.35; transition: opacity var(--dur-fast) var(--ease); }
+  .rz-block:focus-within .rz-bctrl, .rz-block:hover .rz-bctrl { opacity: 1; }
+
+  .rz-b-text, .rz-b-heading { width: 100%; border: 0; background: transparent; resize: none; overflow: hidden; color: var(--ink); font-size: 1rem; line-height: 1.55; }
+  .rz-b-text:focus, .rz-b-heading:focus { outline: none; }
+  .rz-b-heading { font-family: var(--font-display); font-weight: 700; font-size: var(--step-2); }
+
+  .rz-items { display: flex; flex-direction: column; gap: 0.25rem; }
+  .rz-item { display: flex; align-items: center; gap: 0.5rem; }
+  .rz-item-inp { flex: 1; min-width: 0; border: 0; background: transparent; color: var(--ink); font-size: 1rem; padding: 0.15rem 0; }
+  .rz-item-inp:focus { outline: none; }
+  .rz-todo input[type=checkbox] { width: 1.15rem; height: 1.15rem; accent-color: var(--accent); flex: none; }
+  .rz-todo.done .rz-item-inp { text-decoration: line-through; color: var(--ink-muted); }
+  .rz-mark { font-family: var(--font-mono); color: var(--ink-soft); min-width: 1.3rem; text-align: right; font-size: 0.9rem; }
+  .rz-list-head { margin-bottom: 0.2rem; }
+  .rz-mini { font-family: var(--font-mono); font-size: 0.7rem; color: var(--ink-soft); padding: 0.15rem 0.5rem; border: 1px solid var(--border); border-radius: var(--radius-full); }
+  .rz-mini:hover { color: var(--accent); border-color: var(--accent); }
+  .rz-additem { align-self: flex-start; font-family: var(--font-mono); font-size: 0.75rem; color: var(--ink-soft); padding: 0.2rem 0; }
+  .rz-additem:hover { color: var(--accent); }
+
+  .rz-b-img { width: 100%; border-radius: var(--radius); border: 1px solid var(--border); }
+  .rz-b-cap { border: 0; background: transparent; color: var(--ink-soft); font-size: var(--step--1); text-align: center; }
+  .rz-b-cap:focus { outline: none; }
+  .rz-pick { align-self: flex-start; padding: 0.6rem 1rem; border: 1px dashed var(--border); border-radius: var(--radius); color: var(--ink-soft); font-family: var(--font-mono); font-size: 0.8rem; }
+  .rz-pick:hover { border-color: var(--accent); color: var(--accent); }
+
+  .rz-icon { width: 1.7rem; height: 1.7rem; display: inline-flex; align-items: center; justify-content: center; border-radius: var(--radius); color: var(--ink-soft); font-size: 0.9rem; }
+  .rz-icon:hover { background: var(--surface-2); color: var(--accent); }
+
+  /* adicionar bloco */
+  .rz-add { margin-top: var(--space-4); }
+  .rz-add-btn { width: 100%; padding: 0.7rem; border: 1px dashed var(--border); border-radius: var(--radius); color: var(--ink-soft); font-family: var(--font-mono); font-size: 0.85rem; }
+  .rz-add-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .rz-add-menu { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: var(--space-3); }
+  .rz-add-menu button { padding: 0.5rem 0.9rem; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-full); font-size: 0.85rem; color: var(--ink-2); }
+  .rz-add-menu button:hover { border-color: var(--accent); color: var(--accent); }
 
   .rz-err { color: var(--danger); font-size: var(--step--1); }
 
-  @media (max-width: 480px) {
-    .rz-del { opacity: 1; }
+  @media (max-width: 640px) {
+    .rz-cards { grid-template-columns: 1fr; }
+    .rz-note-title { font-size: var(--step-3); }
   }
 </style>
