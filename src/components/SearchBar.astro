@@ -1,0 +1,139 @@
+---
+// Barra de busca estilo "página inicial de navegador".
+// Sem JS: envia pro Google (form GET). Com JS: se parecer URL, vai direto ao site.
+---
+
+<section class="startbar" aria-label="Busca rápida">
+  <div class="container startbar-inner">
+    <form id="gsearch" class="searchbox" action="https://www.google.com/search" method="get" role="search" target="_top">
+      <svg class="search-ic" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="11" cy="11" r="7"></circle>
+        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+      </svg>
+      <input
+        id="gq"
+        type="search"
+        name="q"
+        placeholder="Pesquisar no Google ou digitar um endereço"
+        aria-label="Pesquisar no Google"
+        autocomplete="off"
+        autocapitalize="off"
+        autocorrect="off"
+        spellcheck="false"
+        enterkeyhint="search"
+      />
+      <button type="submit" class="search-go" aria-label="Pesquisar">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+          <polyline points="12 5 19 12 12 19"></polyline>
+        </svg>
+      </button>
+    </form>
+
+    <nav class="quicklinks" aria-label="Atalhos">
+      <a href="https://mail.google.com" target="_top">Gmail</a>
+      <a href="https://youtube.com" target="_top">YouTube</a>
+      <a href="https://wa.me/" target="_top">WhatsApp</a>
+      <a href="/becape/restrito">Anotações</a>
+      <a href="/becape">BECAPE</a>
+    </nav>
+  </div>
+</section>
+
+<script is:inline>
+  (function () {
+    var form = document.getElementById('gsearch');
+    var q = document.getElementById('gq');
+    if (!form || !q) return;
+    form.addEventListener('submit', function (e) {
+      var v = q.value.trim();
+      if (!v) { e.preventDefault(); q.focus(); return; }
+      // já é URL completa
+      if (/^https?:\/\//i.test(v)) { e.preventDefault(); window.top.location.href = v; return; }
+      // parece um domínio (sem espaços, com ponto e sem ser uma frase)
+      if (!/\s/.test(v) && /^[^\s]+\.[a-z]{2,}(\/.*)?$/i.test(v)) {
+        e.preventDefault(); window.top.location.href = 'https://' + v; return;
+      }
+      // senão: deixa o form seguir pro Google (?q=...)
+    });
+  })();
+</script>
+
+<style>
+  .startbar {
+    padding-block: clamp(var(--space-6), 7vw, var(--space-8)) var(--space-5);
+  }
+  .startbar-inner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-4);
+  }
+  .searchbox {
+    width: 100%;
+    max-width: 42rem;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.35rem 0.5rem 0.35rem 1.1rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-full);
+    box-shadow: var(--shadow-md);
+    transition: box-shadow var(--dur) var(--ease), border-color var(--dur) var(--ease);
+  }
+  .searchbox:focus-within {
+    border-color: var(--accent);
+    box-shadow: var(--shadow-lg);
+  }
+  .search-ic { color: var(--ink-soft); flex: none; }
+  #gq {
+    flex: 1;
+    min-width: 0;
+    border: 0;
+    background: transparent;
+    font-size: 1.05rem; /* >=16px evita zoom no iOS/mobile */
+    padding: 0.75rem 0;
+    color: var(--ink);
+  }
+  #gq::placeholder { color: var(--ink-muted); }
+  #gq:focus { outline: none; }
+  /* remove o "x" nativo do type=search em alguns navegadores */
+  #gq::-webkit-search-decoration,
+  #gq::-webkit-search-cancel-button { -webkit-appearance: none; }
+
+  .search-go {
+    flex: none;
+    width: 2.6rem;
+    height: 2.6rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-full);
+    background: var(--ink);
+    color: var(--surface);
+    transition: background var(--dur-fast) var(--ease);
+  }
+  .search-go:hover { background: var(--accent); }
+
+  .quicklinks {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.4rem 0.9rem;
+  }
+  .quicklinks a {
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    color: var(--ink-soft);
+    padding: 0.3rem 0.7rem;
+    border-radius: var(--radius-full);
+    transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+  }
+  .quicklinks a:hover { background: var(--surface-2); color: var(--accent); }
+
+  @media (max-width: 640px) {
+    .searchbox { padding-left: 0.9rem; }
+    #gq { font-size: 1rem; padding-block: 0.7rem; }
+  }
+</style>
