@@ -1,34 +1,41 @@
 ---
 // Barra de busca estilo "página inicial de navegador".
-// Sem JS: envia pro Google (form GET). Com JS: se parecer URL, vai direto ao site.
+// Sem JS: envia pro Google (form GET). Com JS: sugestões ao digitar (via
+// /api/suggest, proxy do Google Suggest na VPS) e URL digitada vai direto.
 ---
 
 <section class="startbar" aria-label="Busca rápida">
   <div class="container startbar-inner">
-    <form id="gsearch" class="searchbox" action="https://www.google.com/search" method="get" role="search" target="_top">
-      <svg class="search-ic" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <circle cx="11" cy="11" r="7"></circle>
-        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-      </svg>
-      <input
-        id="gq"
-        type="search"
-        name="q"
-        placeholder="Pesquisar no Google ou digitar um endereço"
-        aria-label="Pesquisar no Google"
-        autocomplete="off"
-        autocapitalize="off"
-        autocorrect="off"
-        spellcheck="false"
-        enterkeyhint="search"
-      />
-      <button type="submit" class="search-go" aria-label="Pesquisar">
-        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <line x1="5" y1="12" x2="19" y2="12"></line>
-          <polyline points="12 5 19 12 12 19"></polyline>
+    <div class="searchwrap">
+      <form id="gsearch" class="searchbox" action="https://www.google.com/search" method="get" role="search" target="_top">
+        <svg class="search-ic" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="11" cy="11" r="7"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
         </svg>
-      </button>
-    </form>
+        <input
+          id="gq"
+          type="search"
+          name="q"
+          placeholder="Pesquisar no Google ou digitar um endereço"
+          aria-label="Pesquisar no Google"
+          autocomplete="off"
+          autocapitalize="off"
+          autocorrect="off"
+          spellcheck="false"
+          enterkeyhint="search"
+          role="combobox"
+          aria-expanded="false"
+          aria-controls="gsug"
+        />
+        <button type="submit" class="search-go" aria-label="Pesquisar">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+            <polyline points="12 5 19 12 12 19"></polyline>
+          </svg>
+        </button>
+      </form>
+      <ul id="gsug" class="gsug" role="listbox" hidden></ul>
+    </div>
 
     <nav class="quicklinks" aria-label="Atalhos">
       <a href="https://mail.google.com" target="_top">Gmail</a>
@@ -44,18 +51,82 @@
   (function () {
     var form = document.getElementById('gsearch');
     var q = document.getElementById('gq');
-    if (!form || !q) return;
+    var sug = document.getElementById('gsug');
+    if (!form || !q || !sug) return;
+
+    /* ---- URL direta vs busca ---- */
     form.addEventListener('submit', function (e) {
+      closeSug();
       var v = q.value.trim();
       if (!v) { e.preventDefault(); q.focus(); return; }
-      // já é URL completa
       if (/^https?:\/\//i.test(v)) { e.preventDefault(); window.top.location.href = v; return; }
-      // parece um domínio (sem espaços, com ponto e sem ser uma frase)
       if (!/\s/.test(v) && /^[^\s]+\.[a-z]{2,}(\/.*)?$/i.test(v)) {
         e.preventDefault(); window.top.location.href = 'https://' + v; return;
       }
-      // senão: deixa o form seguir pro Google (?q=...)
     });
+
+    /* ---- sugestões ---- */
+    var timer = null, ctrl = null, active = -1, typed = '';
+
+    function closeSug() {
+      sug.hidden = true; sug.innerHTML = ''; active = -1;
+      q.setAttribute('aria-expanded', 'false');
+    }
+    function items() { return sug.querySelectorAll('li'); }
+
+    function render(list) {
+      if (!list || !list.length) { closeSug(); return; }
+      sug.innerHTML = '';
+      list.forEach(function (s) {
+        var li = document.createElement('li');
+        li.setAttribute('role', 'option');
+        li.innerHTML = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>';
+        var span = document.createElement('span');
+        span.textContent = s;
+        li.appendChild(span);
+        // pointerdown dispara antes do blur do input
+        li.addEventListener('pointerdown', function (e) {
+          e.preventDefault();
+          q.value = s;
+          closeSug();
+          form.requestSubmit();
+        });
+        sug.appendChild(li);
+      });
+      sug.hidden = false; active = -1;
+      q.setAttribute('aria-expanded', 'true');
+    }
+
+    function highlight() {
+      var els = items();
+      els.forEach(function (el, i) { el.classList.toggle('on', i === active); });
+      q.value = active >= 0 ? els[active].textContent.trim() : typed;
+    }
+
+    q.addEventListener('input', function () {
+      typed = q.value;
+      clearTimeout(timer);
+      var v = q.value.trim();
+      if (!v) { closeSug(); return; }
+      timer = setTimeout(function () {
+        if (ctrl) ctrl.abort();
+        ctrl = ('AbortController' in window) ? new AbortController() : null;
+        fetch('/api/suggest?q=' + encodeURIComponent(v), ctrl ? { signal: ctrl.signal } : {})
+          .then(function (r) { return r.ok ? r.json() : { s: [] }; })
+          .then(function (d) { if (q.value.trim() === v) render(d.s); })
+          .catch(function () {});
+      }, 180);
+    });
+
+    q.addEventListener('keydown', function (e) {
+      if (sug.hidden) return;
+      var n = items().length;
+      if (e.key === 'ArrowDown') { e.preventDefault(); active = (active + 1) % n; highlight(); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); active = active <= 0 ? n - 1 : active - 1; highlight(); }
+      else if (e.key === 'Escape') { closeSug(); q.value = typed; }
+    });
+
+    q.addEventListener('blur', function () { setTimeout(closeSug, 150); });
   })();
 </script>
 
@@ -69,9 +140,13 @@
     align-items: center;
     gap: var(--space-4);
   }
-  .searchbox {
+  .searchwrap {
+    position: relative;
     width: 100%;
     max-width: 42rem;
+  }
+  .searchbox {
+    width: 100%;
     display: flex;
     align-items: center;
     gap: 0.6rem;
@@ -98,7 +173,6 @@
   }
   #gq::placeholder { color: var(--ink-muted); }
   #gq:focus { outline: none; }
-  /* remove o "x" nativo do type=search em alguns navegadores */
   #gq::-webkit-search-decoration,
   #gq::-webkit-search-cancel-button { -webkit-appearance: none; }
 
@@ -115,6 +189,38 @@
     transition: background var(--dur-fast) var(--ease);
   }
   .search-go:hover { background: var(--accent); }
+
+  /* dropdown de sugestões */
+  .gsug {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    right: 0;
+    z-index: 40;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    overflow: hidden;
+    padding-block: 0.35rem;
+  }
+  .gsug li {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    padding: 0.65rem 1.1rem;
+    cursor: pointer;
+    color: var(--ink);
+    font-size: 1rem;
+  }
+  .gsug li svg { color: var(--ink-muted); flex: none; }
+  .gsug li span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .gsug li:hover,
+  .gsug li.on { background: var(--surface-2); }
 
   .quicklinks {
     display: flex;
@@ -135,5 +241,6 @@
   @media (max-width: 640px) {
     .searchbox { padding-left: 0.9rem; }
     #gq { font-size: 1rem; padding-block: 0.7rem; }
+    .gsug li { padding: 0.75rem 1rem; }
   }
 </style>
